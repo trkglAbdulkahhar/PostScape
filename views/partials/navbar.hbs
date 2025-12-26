@@ -1,0 +1,100 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/dashboard">
+            <i class="fas fa-layer-group me-2"></i>PostScape
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+
+            <ul class="navbar-nav me-auto">
+                {{#if currentUser}}
+                <li class="nav-item">
+                    <a class="nav-link" href="/feed"><i class="fas fa-stream me-1"></i> All Posts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/posts/mine"><i class="fas fa-file-alt me-1"></i> My Posts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/messages"><i class="fas fa-envelope me-1"></i> Messages</a>
+                </li>
+                {{/if}}
+            </ul>
+
+            <ul class="navbar-nav ms-auto align-items-center">
+                {{#if currentUser}}
+                <li class="nav-item me-3 d-none d-md-block">
+                    <span class="badge bg-dark border border-secondary text-light rounded-pill px-3 py-2">
+                        <i class="fas fa-circle text-success me-1"
+                            style="font-size: 0.6rem; vertical-align: middle;"></i>
+                        <span id="online-count" class="fw-bold">{{onlineCount}}</span> Online
+                    </span>
+                </li>
+
+                <li class="nav-item me-3">
+                    <a href="/posts/add" class="btn btn-success btn-sm fw-bold">
+                        <i class="fas fa-plus"></i> New Post
+                    </a>
+                </li>
+
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
+                        role="button" data-bs-toggle="dropdown">
+                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
+                            style="width: 32px; height: 32px;">
+                            {{initials currentUser.name}}
+                        </div>
+                        <span class="fw-bold">{{currentUser.name}}</span>
+                    </a>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li>
+                            <a class="dropdown-item" href="/dashboard">
+                                <i class="fas fa-user-circle me-2 text-primary"></i> My Dashboard
+                            </a>
+                        </li>
+
+                        {{#if (eq currentUser.role 'owner')}}
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-warning fw-bold" href="/master">
+                                <i class="fas fa-crown me-2"></i> Master Panel
+                            </a>
+                        </li>
+                        {{/if}}
+
+                        {{#if (or (eq currentUser.role 'admin') (eq currentUser.role 'owner'))}}
+                        <li>
+                            <a class="dropdown-item text-danger fw-bold" href="/admin">
+                                <i class="fas fa-shield-alt me-2"></i> Admin Panel
+                            </a>
+                        </li>
+                        {{/if}}
+
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-muted" href="/auth/logout">
+                                <i class="fas fa-sign-out-alt me-2"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                {{else}}
+                <li class="nav-item">
+                    <a class="nav-link" href="/auth/login">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="btn btn-outline-light ms-2" href="/auth/register">Sign Up</a>
+                </li>
+                {{/if}}
+            </ul>
+        </div>
+    </div>
+</nav>

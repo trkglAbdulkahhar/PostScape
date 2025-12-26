@@ -1,0 +1,76 @@
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-3">
+            <div class="card-body p-5">
+                <div class="mb-4">
+                    <div class="nav nav-pills nav-fill bg-light rounded p-1" id="roleTabs" role="tablist">
+                        <button class="nav-link {{#unless isAdmin}}active{{/unless}} rounded fw-bold" id="tab-user"
+                            data-bs-toggle="pill" onclick="toggleRole('user')" type="button">
+                            <i class="fas fa-user me-2"></i>User
+                        </button>
+                        <button class="nav-link {{#if isAdmin}}active{{/if}} rounded fw-bold" id="tab-admin"
+                            data-bs-toggle="pill" onclick="toggleRole('admin')" type="button">
+                            <i class="fas fa-shield-alt me-2"></i>Admin
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold text-dark">Create Account</h3>
+                    <p class="text-muted small" id="headerText">
+                        {{#if isAdmin}}Join as a System Administrator{{else}}Join as a standard user{{/if}}
+                    </p>
+                </div>
+
+                <form action="/auth/register" method="POST">
+                    <input type="hidden" name="role" id="roleInput" value="{{#if isAdmin}}admin{{else}}user{{/if}}">
+
+                    <div id="adminCodeGroup" class="mb-3" style="display: {{#if isAdmin}}block{{else}}none{{/if}};">
+                        <div class="form-floating">
+                            <input type="password"
+                                class="form-control border-danger {{#if adminError}}is-invalid{{/if}}" id="adminCode"
+                                name="adminCode" placeholder="Enter Code" {{#if isAdmin}}required{{/if}}>
+                            <label for="adminCode" class="text-danger">Admin Secret Code</label>
+                        </div>
+                        {{#if adminError}}
+                        <div class="text-danger small mt-1 ms-2 fw-bold">
+                            <i class="fas fa-exclamation-circle me-1"></i> Incorrect code. You are not authorized!
+                        </div>
+                        {{else}}
+                        <small class="text-danger ms-1"><i class="fas fa-lock small"></i> Required for admin
+                            access</small>
+                        {{/if}}
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" name="name" placeholder="Full Name" value="{{name}}"
+                            required>
+                        <label>Full Name</label>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" name="email" placeholder="name@example.com"
+                            value="{{email}}" required>
+                        <label>Email Address</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+
+
+                    <button type="submit"
+                        class="btn {{#if isAdmin}}btn-danger{{else}}btn-primary{{/if}} w-100 py-2 fw-bold shadow-sm"
+                        id="submitBtn">
+                        {{#if isAdmin}}Register as Admin{{else}}Register as User{{/if}}
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="/auth/login" class="text-decoration-none">Already have an account? Sign In</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,41 @@
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold"><i class="fas fa-user-secret text-danger me-2"></i>Global Chat Monitor</h2>
+        <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Participants</th>
+                        <th>Last Message</th>
+                        <th>Last Active</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each conversations}}
+                    <tr>
+                        <td>
+                            {{#each members}}
+                            <span class="badge bg-dark">{{this.name}}</span>
+                            {{/each}}
+                        </td>
+                        <td class="text-muted text-truncate" style="max-width: 250px;">
+                            {{lastMessage}}
+                        </td>
+                        <td>{{formatDate updatedAt}}</td>
+                        <td>
+                            <a href="/admin/messages/{{_id}}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-eye me-1"></i> Inspect
+                            </a>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

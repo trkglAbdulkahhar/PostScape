@@ -1,0 +1,55 @@
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/admin">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Edit Post</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0">Moderation: Edit Post (ID: {{post._id}})</h5>
+                </div>
+                <div class="card-body p-4">
+                    <form action="/admin/posts/edit/{{post._id}}" method="POST" enctype="multipart/form-data">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Post Title</label>
+                            <input type="text" name="title" class="form-control" value="{{post.title}}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Author</label>
+                            <input type="text" class="form-control bg-light" value="{{post.user.name}}" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Current Image</label>
+                            <div>
+                                {{#if post.image}}
+                                <img src="{{post.image}}" class="rounded mb-2 border" style="height: 120px;">
+                                {{else}}
+                                <p class="text-muted small">No image</p>
+                                {{/if}}
+                            </div>
+                            <input type="file" name="image" class="form-control" accept="image/*">
+                            <small class="text-muted">Leave empty to keep current image.</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Content</label>
+                            <textarea name="body" class="form-control" rows="8" required>{{post.body}}</textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary px-4">Update Post</button>
+                            <a href="/admin" class="btn btn-outline-secondary px-4">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

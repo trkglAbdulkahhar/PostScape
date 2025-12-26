@@ -1,0 +1,146 @@
+<div class="container py-4">
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-6">
+            <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border border-light">
+                <span class="input-group-text bg-white border-0 ps-3">
+                    <i class="fas fa-search text-muted small"></i>
+                </span>
+                <input type="text" id="feedSearch" class="form-control border-0 shadow-none ps-2 py-2"
+                    style="font-size: 0.9rem;" placeholder="Search posts or tags..." autocomplete="off">
+            </div>
+        </div>
+    </div>
+
+    <!-- Post Grid with ID for easy updates -->
+    <div class="row row-cols-1 row-cols-md-3 g-4 feed-container" id="postGrid">
+        {{#each posts}}
+        <div class="col post-card-wrapper" style="animation-delay: {{@index}}00ms">
+            <!-- Added 'onclick' and removed 'a' tag wrapper, using div instead for card -->
+            <div class="card h-100 shadow-sm post-card" onclick="goToPost('{{_id}}')">
+                {{#if image}}
+                <img src="{{image}}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                {{/if}}
+                <div class="card-body">
+                    <h5 class="fw-bold mb-2 card-title">{{title}}</h5>
+                    <div class="mb-3 post-tags">
+                        {{#each tags}}
+                        <span class="badge rounded-pill bg-light text-primary border">@{{this}}</span>
+                        {{/each}}
+                    </div>
+                    <!-- Truncate body for cleaner look -->
+                    <p class="text-muted small mb-0">{{body}}</p>
+                </div>
+                <div class="card-footer bg-white border-0 pb-3 d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
+                        style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                        {{initials user.name}}
+                    </div>
+                    <small class="text-dark fw-semibold me-auto">{{user.name}}</small>
+
+                    <!-- Like Button -->
+                    <form action="/posts/like/{{this._id}}" method="POST" class="d-inline"
+                        onclick="event.stopPropagation();">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent">
+                            <i
+                                class="{{#if (isLikedByUser this.likes ../user._id)}}fas text-danger{{else}}far text-dark{{/if}} fa-heart"></i>
+                            <span class="ms-1 small fw-bold">{{this.likes.length}}</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+</div>
+
+<script>
+    // Navigation Logic
+    async function goToPost(postId) {
+        fetch(`/posts/track-click/${postId}`, { method: 'POST' }).catch(() => { });
+        window.location.href = `/posts/${postId}`;
+    }
+
+    // Client-Side Live Search Logic
+    document.getElementById('feedSearch').addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase().trim();
+        const postWrappers = document.querySelectorAll('.post-card-wrapper');
+
+        postWrappers.forEach(wrapper => {
+            // Get content safely
+            const titleElement = wrapper.querySelector('.card-title');
+            const tagsElement = wrapper.querySelector('.post-tags');
+
+            const title = titleElement ? titleElement.innerText.toLowerCase() : "";
+            const tags = tagsElement ? tagsElement.innerText.toLowerCase() : "";
+
+            // Check matches
+            if (title.includes(searchTerm) || tags.includes(searchTerm)) {
+                wrapper.style.display = "block";
+                wrapper.style.animation = "none"; // Reset to re-trigger if needed, or just let it be visible
+                wrapper.offsetHeight; // Trigger reflow
+                wrapper.style.animation = "slideIn 0.3s ease forwards"; // Re-apply for effect
+            } else {
+                wrapper.style.display = "none";
+            }
+        });
+
+        // No Results Message Logic
+        const visiblePosts = Array.from(postWrappers).filter(w => w.style.display !== "none");
+        let noResultMsg = document.getElementById('no-results');
+
+        if (visiblePosts.length === 0) {
+            if (!noResultMsg) {
+                const msg = document.createElement('div');
+                msg.id = 'no-results';
+                msg.className = 'text-center py-5 w-100';
+                msg.innerHTML = `
+                    <i class="fas fa-search-minus fa-2x text-muted mb-3"></i>
+                    <p class="text-muted small">No matching results found.</p>
+                `;
+                document.querySelector('.feed-container').appendChild(msg);
+            }
+        } else if (noResultMsg) {
+            noResultMsg.remove();
+        }
+    });
+</script>
+
+<style>
+    /* Feed Animations */
+    .feed-container {
+        /* display: flex; override grid if needed, but row-cols works well with grid */
+        transition: all 0.5s ease-in-out;
+    }
+
+    .post-card-wrapper {
+        animation: slideIn 0.5s ease forwards;
+        opacity: 0;
+        /* Star invisible */
+        transform: translateY(20px);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .post-card {
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        cursor: pointer;
+        border: none;
+        overflow: hidden;
+    }
+
+    .post-card:hover {
+        transform: scale(1.02) translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12) !important;
+        z-index: 10;
+    }
+</style>

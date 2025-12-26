@@ -1,0 +1,93 @@
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-pen-nib me-2"></i>New Message</h5>
+                </div>
+                <div class="card-body">
+
+                    {{#if error}}
+                    <div class="alert alert-danger">{{error}}</div>
+                    {{/if}}
+
+                    <form action="/messages/new" method="POST">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label fw-bold">Recipient Name</label>
+                            <input type="text" id="userSearchInput" class="form-control rounded-pill"
+                                placeholder="Start typing a name..." autocomplete="off" value="{{username}}">
+
+                            <ul id="searchResults" class="list-group position-absolute w-100 shadow-lg d-none"
+                                style="z-index: 1000; top: 100%;">
+                            </ul>
+
+                            <input type="hidden" name="recipientId" id="recipientId">
+                            <div class="form-text">Search for a user by name or nickname.</div>
+                        </div>
+
+                        <script>
+                            const searchInput = document.getElementById('userSearchInput');
+                            const resultsList = document.getElementById('searchResults');
+                            const recipientIdInput = document.getElementById('recipientId');
+
+                            searchInput.addEventListener('input', async (e) => {
+                                const query = e.target.value;
+                                if (query.length < 1) {
+                                    resultsList.classList.add('d-none');
+                                    return;
+                                }
+
+                                try {
+                                    const res = await fetch(`/search-users?query=${query}`);
+                                    const users = await res.json();
+
+                                    if (users.length > 0) {
+                                        resultsList.innerHTML = users.map(user => `
+                                            <li class="list-group-item list-group-item-action cursor-pointer" 
+                                                onclick="selectUser('${user._id}', '${user.firstName} ${user.lastName} (@${user.nickname})')">
+                                                <strong>${user.firstName} ${user.lastName}</strong> 
+                                                <small class="text-muted">@${user.nickname}</small>
+                                            </li>
+                                        `).join('');
+                                        resultsList.classList.remove('d-none');
+                                    } else {
+                                        resultsList.classList.add('d-none');
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                }
+                            });
+
+                            function selectUser(id, displayName) {
+                                searchInput.value = displayName;
+                                recipientIdInput.value = id;
+                                resultsList.classList.add('d-none');
+                            }
+
+                            // Hide list when clicking outside
+                            document.addEventListener('click', (e) => {
+                                if (!searchInput.contains(e.target) && !resultsList.contains(e.target)) {
+                                    resultsList.classList.add('d-none');
+                                }
+                            });
+                        </script>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Message</label>
+                            <textarea name="text" class="form-control" rows="4" placeholder="Say hello..."
+                                required>{{text}}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i> Send Message
+                            </button>
+                            <a href="/messages" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

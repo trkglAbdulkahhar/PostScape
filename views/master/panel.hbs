@@ -1,0 +1,47 @@
+<div class="card shadow">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h3 class="mb-0">👑 Master Panel</h3>
+        <span class="badge bg-warning text-dark">Owner Area</span>
+    </div>
+    <div class="card-body">
+        <h5 class="card-title">User Management</h5>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Last Active</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each users}}
+                    <tr>
+                        <td class="fw-bold">{{name}}</td>
+                        <td>{{email}}</td>
+                        <td>
+                            <span
+                                class="badge {{#if (eq role 'owner')}}bg-warning text-dark{{else if (eq role 'admin')}}bg-danger{{else}}bg-secondary{{/if}}">
+                                {{role}}
+                            </span>
+                        </td>
+                        <td>{{formatDate lastActive}}</td>
+                        <td>
+                            <form action="/master/role" method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="userId" value="{{_id}}">
+                                <select name="newRole" class="form-select form-select-sm" style="width: 100px;">
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

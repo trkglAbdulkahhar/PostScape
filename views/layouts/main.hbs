@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}} - PostScape</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+    {{> navbar}}
+
+    {{{body}}}
+
+    {{> save-modal}}
+    {{> share-modal}}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const onlineEl = document.getElementById('online-count');
+
+        socket.on('updateOnlineCount', (count) => {
+            if (onlineEl) {
+                // Update count
+                onlineEl.innerText = count;
+
+                // Premium Green Flash Effect
+                onlineEl.style.color = "#28a745";
+                onlineEl.style.transition = "all 0.3s ease";
+                onlineEl.style.textShadow = "0 0 8px rgba(40, 167, 69, 0.5)";
+
+                setTimeout(() => {
+                    onlineEl.style.color = "";
+                    onlineEl.style.textShadow = "none";
+                }, 800);
+            }
+        });
+    </script>
+</body>
+
+</html>

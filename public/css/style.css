@@ -1,0 +1,70 @@
+/* GLOBAL STYLES */
+body {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* AUTH CARDS (Login/Register) */
+.card-auth {
+    border: none;
+    border-radius: 1rem;
+    transition: transform 0.2s;
+}
+
+/* POST CARD (Mini View) */
+.post-card-hover {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.post-card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+}
+
+/* TEXT TRUNCATION (For Feed) */
+.truncate-3-lines {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* DASHBOARD PROFILE */
+.profile-avatar {
+    width: 90px;
+    height: 90px;
+    font-size: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* SINGLE POST IMAGE */
+.post-image-full {
+    width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    background-color: #f0f2f5;
+}
+
+/* LOGIN PAGE OVERRIDES */
+/* Disable hover effect on login card for stability */
+.card-auth:hover,
+.card:has(form[action="/auth/login"]):hover {
+    transform: none !important;
+}
+
+.form-control:focus {
+    box-shadow: none;
+    border-color: #0d6efd;
+}
+
+.input-group-text {
+    border-color: #ced4da;
+}
+
+.input-group:focus-within .input-group-text {
+    border-color: #0d6efd;
+}

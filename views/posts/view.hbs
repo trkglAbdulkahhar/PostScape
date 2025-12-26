@@ -1,0 +1,121 @@
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm border-0 mb-4">
+
+                <div
+                    class="card-header bg-white py-3 d-flex align-items-center justify-content-between border-bottom-0">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3"
+                            style="width: 45px; height: 45px; font-size: 1.2rem;">
+                            {{initials post.user.name}}
+                        </div>
+                        <div>
+                            <h6 class="mb-0 fw-bold">{{post.user.name}}</h6>
+                            <small class="text-muted">{{formatDate post.createdAt}}</small>
+                        </div>
+                    </div>
+
+                    {{#if (or (eq user._id post.user._id) adminMode)}}
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v text-muted"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                            <li>
+                                <a class="dropdown-item" href="/posts/edit/{{post._id}}">
+                                    <i class="fas fa-edit text-warning me-2"></i>Edit Post
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <form action="/posts/delete/{{post._id}}" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item text-danger"
+                                        onclick="return confirm('Delete this post?');">
+                                        <i class="fas fa-trash-alt me-2"></i>Delete
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                    {{/if}}
+                </div>
+
+                {{#if post.image}}
+                <div class="bg-light text-center">
+                    <img src="{{post.image}}" alt="{{post.title}}" class="img-fluid w-100"
+                        style="max-height: 600px; object-fit: contain;">
+                </div>
+                {{/if}}
+
+                <div class="card-body p-4">
+                    <h3 class="fw-bold mb-3">{{post.title}}</h3>
+                    <div class="card-text fs-5 text-dark" style="white-space: pre-wrap; line-height: 1.6;">{{post.body}}
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white py-3 border-top-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-4 align-items-center">
+
+                            <form action="/posts/like/{{post._id}}" method="POST" class="d-inline">
+                                <button type="submit" class="btn p-0 border-0 bg-transparent">
+                                    <i
+                                        class="{{#if isLiked}}fas text-danger{{else}}far text-dark{{/if}} fa-lg fa-heart"></i>
+                                    <span class="ms-1 fw-bold">{{post.likes.length}}</span>
+                                </button>
+                            </form>
+
+                            <a href="/posts/{{post._id}}/comments"
+                                class="text-decoration-none text-dark d-flex align-items-center" title="View Comments">
+                                <i class="far fa-lg fa-comment"></i>
+                                <span class="ms-1 fw-bold">{{post.comments.length}}</span>
+                            </a>
+
+                            <button class="btn p-0 border-0 bg-transparent text-dark"
+                                onclick="openShareModal('{{post._id}}')">
+                                <i class="far fa-lg fa-paper-plane"></i>
+                            </button>
+                        </div>
+
+                        {{#if isSaved}}
+                        <!-- UNSAVE FORM -->
+                        <form action="/collections/save" method="POST" class="d-inline">
+                            <input type="hidden" name="postId" value="{{post._id}}">
+                            <button type="submit" class="btn p-0 border-0 bg-transparent text-dark ms-3"
+                                title="Remove from Saved">
+                                <i class="fas fa-bookmark fa-lg"></i>
+                            </button>
+                        </form>
+                        {{else}}
+                        <!-- SAVE MODAL TRIGGER -->
+                        <button type="button" class="btn p-0 border-0 bg-transparent text-dark ms-3"
+                            onclick="openSaveModal('{{post._id}}')" title="Save to Collection">
+                            <i class="far fa-bookmark fa-lg"></i>
+                        </button>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSaveModal(postId) {
+        // Modal'ı açan fonksiyonun doğru çalıştığından emin olalım
+        const modalEl = document.getElementById('saveModal');
+        if (modalEl) {
+            const saveModal = new bootstrap.Modal(modalEl);
+            const input = document.getElementById('savePostId');
+            if (input) input.value = postId; // Gizli inputa ID'yi bas
+            saveModal.show();
+        } else {
+            console.warn("Save Modal not found in DOM");
+        }
+    }
+</script>

@@ -1,0 +1,213 @@
+<style>
+    /* Sabit yükseklik ve taşma kontrolü */
+    .chat-container {
+        height: calc(100vh - 120px);
+        min-height: 500px;
+    }
+
+    #chatWindow {
+        flex-grow: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        background-color: #f8f9fa;
+        max-height: calc(100% - 75px);
+        /* Ensure space for header/input */
+    }
+
+    .input-area {
+        background: white;
+        padding: 15px;
+        border-top: 1px solid #dee2e6;
+        margin-top: auto;
+        /* Push to bottom */
+    }
+
+    /* Sadece gönderilen mesajlar (sağdaki mavi balonlar) için genişleme */
+    .sent-message .message-bubble {
+        position: relative;
+        transition: padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        min-width: 80px;
+    }
+
+    .sent-message .message-bubble:hover {
+        padding-bottom: 35px !important;
+    }
+
+    /* Karşı tarafın mesajları (soldaki beyaz balonlar) - Hover etkisini kapat */
+    .justify-content-start .message-bubble {
+        padding-bottom: 8px !important;
+        /* Standart padding */
+        cursor: default;
+    }
+
+    /* İkonların görünürlüğü sadece gönderilenlerde çalışsın */
+    .message-actions-vertical {
+        position: absolute;
+        bottom: 5px;
+        right: 12px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: translateY(-5px);
+        display: flex;
+        gap: 12px;
+    }
+
+    .sent-message .message-bubble:hover .message-actions-vertical {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+
+    /* İkonlar için ufak bir stil */
+    .action-btn {
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: transform 0.1s;
+    }
+
+    .action-btn:hover {
+        transform: scale(1.2);
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="row g-0 shadow-sm border rounded-4 overflow-hidden bg-white chat-container">
+
+        <div class="col-md-4 col-lg-3 border-end d-flex flex-column bg-white">
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold m-0">Messages</h5>
+                <a href="/messages/new" class="btn btn-primary btn-sm rounded-pill"><i class="fas fa-plus"></i></a>
+            </div>
+            <div class="overflow-auto" style="flex: 1;">
+                {{#each conversations}}
+                <a href="/messages?id={{_id}}"
+                    class="list-group-item list-group-item-action border-0 p-3 d-flex align-items-center {{#if (eq ../activeChatId _id)}}active bg-light{{/if}}">
+                    <div class="bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
+                        style="width: 40px; height: 40px; min-width: 40px;">
+                        {{#each members}}{{#unless (eq this._id ../../user._id)}}{{initials name}}{{/unless}}{{/each}}
+                    </div>
+                    <div class="text-truncate">
+                        <h6 class="mb-0 fw-bold text-dark">{{#each members}}{{#unless (eq this._id
+                            ../../user._id)}}{{name}}{{/unless}}{{/each}}</h6>
+                        <small class="text-muted">Click to open chat</small>
+                    </div>
+                </a>
+                {{/each}}
+            </div>
+        </div>
+
+        <div class="col-md-8 col-lg-9 d-flex flex-column h-100 position-relative">
+            {{#if activeChatId}}
+            <div class="p-3 border-bottom bg-white fw-bold d-flex align-items-center shadow-sm">
+                {{#each activeChat.members}}
+                {{#unless (eq this._id ../user._id)}}
+                <div class="avatar-circle bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
+                    style="width: 35px; height: 35px; font-size: 0.8rem;">
+                    {{initials this.name}}
+                </div>
+                <span class="text-dark">{{this.name}}</span>
+                {{/unless}}
+                {{/each}}
+            </div>
+
+            <div id="chatWindow">
+                {{#each messages}}
+                <div
+                    class="d-flex mb-3 {{#if (eq sender._id ../user._id)}}justify-content-end sent-message{{else}}justify-content-start{{/if}}">
+                    <div class="message-bubble p-2 px-3 rounded-3 shadow-sm {{#if (eq sender._id ../user._id)}}bg-primary text-white{{else}}bg-white border text-dark{{/if}}"
+                        style="max-width: 75%;">
+
+                        <div id="msg-text-{{_id}}" {{#unless (eq sender._id ../user._id)}}class="mb-0" {{/unless}}>
+                            {{text}}</div>
+
+                        {{#if (eq sender._id ../user._id)}}
+                        <div class="message-actions-vertical d-flex align-items-center gap-2">
+                            <script>
+                                (function () {
+                                    const createdAt = new Date('{{createdAt}}').getTime();
+                                    if ((new Date().getTime() - createdAt) / 1000 < 30) {
+                                        document.write(`
+                                                <a href="javascript:void(0)" onclick="showEditForm('{{_id}}')" class="text-white opacity-75 p-1" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            `);
+                                    }
+                                })();
+                            </script>
+                            <form action="/messages/delete-message/{{_id}}" method="POST" class="m-0">
+                                <button type="submit" class="btn btn-link text-white opacity-75 p-1 shadow-none"
+                                    title="Delete">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <form id="edit-form-{{_id}}" action="/messages/edit-message/{{_id}}" method="POST"
+                            class="d-none mt-2">
+                            <input type="text" name="text" value="{{text}}"
+                                class="form-control form-control-sm border-0 bg-white text-dark shadow-none mb-1">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-sm btn-light py-0 px-2 fw-bold">Kaydet</button>
+                                <button type="button" onclick="hideEditForm('{{_id}}')"
+                                    class="btn btn-sm btn-link text-white-50 py-0 px-0 text-decoration-none">Vazgeç</button>
+                            </div>
+                        </form>
+                        {{/if}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+
+            <div class="input-area">
+                <form action="/messages/{{activeChatId}}" method="POST" class="d-flex gap-2">
+                    <input type="text" name="text" class="form-control rounded-pill shadow-none"
+                        placeholder="Type a message..." required autocomplete="off">
+                    <button type="submit" class="btn btn-primary rounded-circle" style="width: 45px; height: 45px;">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+            {{else}}
+            <div class="h-100 d-flex align-items-center justify-content-center text-muted bg-light">
+                <h5>Select a conversation to start</h5>
+            </div>
+            {{/if}}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Message Edit Toggles
+    function showEditForm(id) {
+        const textEl = document.getElementById(`msg-text-${id}`);
+        const formEl = document.getElementById(`edit-form-${id}`);
+        if (textEl && formEl) {
+            textEl.classList.add('d-none');
+            formEl.classList.remove('d-none');
+        }
+    }
+    function hideEditForm(id) {
+        const textEl = document.getElementById(`msg-text-${id}`);
+        const formEl = document.getElementById(`edit-form-${id}`);
+        if (textEl && formEl) {
+            textEl.classList.remove('d-none');
+            formEl.classList.add('d-none');
+        }
+    }
+
+    // Auto-scroll to bottom
+    function scrollToBottom() {
+        const chatWin = document.getElementById('chatWindow');
+        if (chatWin) {
+            chatWin.scrollTop = chatWin.scrollHeight;
+        }
+    }
+    // Call on load and possibly on resize or image load
+    window.onload = scrollToBottom;
+    setTimeout(scrollToBottom, 50); // Small fallback
+</script>

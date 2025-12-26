@@ -1,0 +1,121 @@
+<style>
+    .message-group {
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* Actions container: Ensures buttons are always at the bottom-right of the bubble */
+    .message-actions {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: all 0.2s ease-in-out;
+        display: flex;
+        justify-content: flex-end;
+        /* Buttons to the right */
+        gap: 12px;
+        width: 100%;
+    }
+
+    .message-group:hover .message-actions {
+        max-height: 50px;
+        opacity: 1;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Light bubble adjustment */
+    .bg-white.message-group:hover .message-actions {
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .action-btn {
+        background: none;
+        border: none;
+        font-size: 0.75rem;
+        padding: 2px 5px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: inherit;
+        opacity: 0.8;
+        transition: opacity 0.2s;
+    }
+
+    .action-btn:hover {
+        opacity: 1;
+        text-decoration: underline;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm" style="border-radius: 15px; overflow: hidden;">
+                <div class="card-header bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="/admin/messages" class="btn btn-sm btn-outline-light me-2"><i
+                                class="fas fa-arrow-left"></i></a>
+                        <span class="fw-bold">Admin Monitor Mode</span>
+                    </div>
+                    <small>Viewing: {{conversation._id}}</small>
+                </div>
+                <div class="card-body bg-light" style="height: 600px; overflow-y: auto;">
+                    {{#each messages}}
+
+                    <div
+                        class="d-flex mb-3 {{#if (eq sender._id ../viewAsId)}}justify-content-end{{else}}justify-content-start{{/if}}">
+
+                        <div class="d-flex flex-column {{#if (eq sender._id ../viewAsId)}}align-items-end{{else}}align-items-start{{/if}}"
+                            style="max-width: 75%;">
+
+                            <small class="text-muted ms-1">{{sender.name}}</small>
+
+                            <div class="p-3 shadow-sm message-group {{#if (eq sender._id ../viewAsId)}}bg-primary text-white{{else}}bg-white text-dark{{/if}}"
+                                style="{{#if (eq sender._id ../viewAsId)}}border-radius: 15px 15px 0 15px;{{else}}border-radius: 15px 15px 15px 0;{{/if}}">
+
+                                <div class="message-text">
+                                    <p class="mb-0">{{text}}</p>
+                                </div>
+
+                                <div class="message-actions">
+                                    <button class="action-btn" onclick="promptEdit('{{_id}}', '{{text}}')">
+                                        <i class="fas fa-edit" style="font-size: 0.65rem;"></i> Edit
+                                    </button>
+
+                                    <form action="/messages/delete/{{_id}}" method="POST" class="m-0">
+                                        <button type="submit" class="action-btn"
+                                            onclick="return confirm('Admin: Delete?')">
+                                            <i class="fas fa-trash-alt" style="font-size: 0.65rem;"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+
+                            </div>
+                            <small class="text-muted mt-1" style="font-size: 0.65rem;">{{formatDate createdAt}}</small>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="editForm" method="POST" style="display:none;">
+    <input type="text" name="newText" id="editInput">
+</form>
+
+<script>
+    function promptEdit(id, oldText) {
+        const newText = prompt("Admin Edit:", oldText);
+        if (newText && newText !== oldText) {
+            const form = document.getElementById('editForm');
+            form.action = '/messages/edit/' + id;
+            document.getElementById('editInput').value = newText;
+            form.submit();
+        }
+    }
+</script>

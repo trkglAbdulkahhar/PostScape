@@ -1,0 +1,100 @@
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-start">
+
+                        {{#if post.image}}
+                        <div class="flex-shrink-0 me-4">
+                            <img src="{{post.image}}" alt="Post Image" class="rounded"
+                                style="width: 120px; height: 120px; object-fit: cover;">
+                        </div>
+                        {{else}}
+                        <div class="flex-shrink-0 me-4 bg-light rounded d-flex align-items-center justify-content-center"
+                            style="width: 120px; height: 120px;">
+                            <i class="fas fa-image text-muted fa-2x"></i>
+                        </div>
+                        {{/if}}
+
+                        <div class="flex-grow-1">
+                            <h5 class="fw-bold mb-1">{{post.title}}</h5>
+                            <div class="mb-2">
+                                <span class="badge bg-light text-dark border me-1"><i class="fas fa-user me-1"></i>
+                                    {{post.user.name}}</span>
+                                <small class="text-muted">{{formatDate post.createdAt}}</small>
+                            </div>
+                            <p class="text-secondary small mb-0" style="max-height: 100px; overflow-y: auto;">
+                                {{post.body}}
+                            </p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold"><i class="far fa-comments me-2"></i>Comments</h6>
+                    <span class="badge bg-primary rounded-pill">{{post.comments.length}}</span>
+                </div>
+
+                <div class="card-body bg-light">
+
+                    <div class="mb-4 d-flex flex-column gap-3" style="max-height: 600px; overflow-y: auto;">
+                        {{#if post.comments}}
+                        {{#each post.comments}}
+                        <div class="d-flex">
+                            <div class="bg-white border text-secondary rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0"
+                                style="width: 35px; height: 35px; font-size: 0.9rem;">
+                                {{initials user.name}}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="bg-white px-3 py-2 rounded-3 shadow-sm border d-inline-block"
+                                    style="min-width: 150px;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark small">{{user.name}}</strong>
+                                    </div>
+                                    <p class="mb-0 text-dark small">{{text}}</p>
+                                </div>
+                                <div class="ms-1 mt-1">
+                                    <small class="text-muted" style="font-size: 0.65rem;">{{formatDate
+                                        createdAt}}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {{/each}}
+                        {{else}}
+                        <div class="text-center py-5 text-muted">
+                            <small>No comments yet.</small>
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div class="border-top pt-3">
+                        <form action="/posts/comment/{{post._id}}" method="POST"
+                            class="d-flex gap-2 align-items-center">
+                            <input type="hidden" name="redirect" value="comments">
+
+                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                style="width: 35px; height: 35px;">
+                                {{initials user.name}}
+                            </div>
+
+                            <div class="flex-grow-1 position-relative">
+                                <input type="text" name="text" class="form-control rounded-pill border-0 shadow-sm px-3"
+                                    placeholder="Add a comment..." required autocomplete="off">
+                                <button type="submit"
+                                    class="btn btn-link position-absolute top-50 end-0 translate-middle-y text-primary fw-bold text-decoration-none pe-3"
+                                    style="font-size: 0.9rem;">Post</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

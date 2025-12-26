@@ -1,0 +1,51 @@
+<div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold"><i class="fas fa-paper-plane text-primary me-2"></i>Share Post</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form action="/messages/share" method="POST">
+                <div class="modal-body px-4 pt-2 pb-4">
+                    <input type="hidden" name="postId" id="sharePostId">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Send to...</label>
+                        {{#if recentContacts}}
+                        <select name="recipientId" class="form-select bg-light border-0" required>
+                            <option value="" selected disabled>Select a friend...</option>
+                            {{#each recentContacts}}
+                            <option value="{{_id}}">{{name}}</option>
+                            {{/each}}
+                        </select>
+                        {{else}}
+                        <div class="alert alert-warning small">
+                            You haven't messaged anyone yet. <a href="/messages/new">Start a chat</a> first!
+                        </div>
+                        {{/if}}
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label fw-bold small text-muted">Add a message (Optional)</label>
+                        <textarea name="text" class="form-control bg-light border-0" rows="2"
+                            placeholder="Check this out..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold w-100">
+                        Send <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openShareModal(postId) {
+        document.getElementById('sharePostId').value = postId;
+        new bootstrap.Modal(document.getElementById('shareModal')).show();
+    }
+</script>

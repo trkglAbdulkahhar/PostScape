@@ -1,0 +1,56 @@
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 shadow-lg p-5 rounded-4 bg-white">
+            <h2 class="fw-bold text-center mb-4">Complete Your Profile 🚀</h2>
+            <form action="/setup-profile" method="POST">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold">First Name</label>
+                        <input type="text" name="firstName" class="form-control rounded-pill" required
+                            value="{{user.firstName}}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small fw-bold">Last Name</label>
+                        <input type="text" name="lastName" class="form-control rounded-pill" required
+                            value="{{user.lastName}}">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Nickname</label>
+                    <input type="text" name="nickname" class="form-control rounded-pill" placeholder="e.g. Neo"
+                        value="{{user.nickname}}" required>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold">Job Title</label>
+                        <input type="text" name="jobTitle" class="form-control rounded-pill"
+                            placeholder="Developer, Designer, etc." value="{{user.jobTitle}}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold">Age</label>
+                        <input type="number" name="age" class="form-control rounded-pill" value="{{user.age}}" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">LinkedIn URL</label>
+                    <input type="url" name="linkedinUrl" class="form-control rounded-pill"
+                        placeholder="https://linkedin.com/in/..." value="{{user.linkedinUrl}}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">GitHub URL</label>
+                    <input type="url" name="githubUrl" class="form-control rounded-pill"
+                        placeholder="https://github.com/..." value="{{user.githubUrl}}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Bio</label>
+                    <textarea name="bio" class="form-control rounded-3" rows="3">{{user.bio}}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 fw-bold">Save and Go to
+                    Dashboard</button>
+            </form>
+        </div>
+    </div>
+</div>

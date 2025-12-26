@@ -1,0 +1,57 @@
+<div class="card shadow border-danger">
+    <div class="card-header bg-danger text-white">
+        <h3 class="mb-0">🛡️ Admin Panel</h3>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <a href="/admin/messages" class="btn btn-dark w-100 py-3 shadow-sm">
+                    <h4 class="mb-0"><i class="fas fa-comments me-2"></i>Monitor User Messages</h4>
+                    <small>View all private conversations</small>
+                </a>
+            </div>
+        </div>
+        <h5 class="mb-3">Content Moderation (All Posts)</h5>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each posts}}
+                    <tr>
+                        <td>{{title}}</td>
+                        <td>{{user.name}}</td>
+                        <td>{{formatDate createdAt}}</td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="/posts/{{_id}}?adminMode=true" class="btn btn-sm btn-info text-white"
+                                    title="View Post (Admin Mode)">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
+                                <a href="/admin/posts/edit/{{_id}}" class="btn btn-sm btn-warning text-white"
+                                    title="Edit Post">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                <form action="/admin/delete/{{_id}}" method="POST" class="d-inline"
+                                    onsubmit="return confirm('Really delete?');">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
