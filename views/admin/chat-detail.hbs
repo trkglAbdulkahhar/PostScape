@@ -77,17 +77,30 @@
                                 style="{{#if (eq sender._id ../viewAsId)}}border-radius: 15px 15px 0 15px;{{else}}border-radius: 15px 15px 15px 0;{{/if}}">
 
                                 <div class="message-text">
-                                    <p class="mb-0">{{text}}</p>
+                                    {{!-- Clean Shared Post Preview (Top) --}}
+                                    {{#if sharedPost}}
+                                    <div class="shared-post-image mb-2 bg-white"
+                                        style="border-radius: 8px; overflow: hidden; max-width: 300px;">
+                                        {{#if sharedPost.image}}
+                                        <img src="{{sharedPost.image}}" class="w-100"
+                                            style="height: auto; max-height: 150px; object-fit: cover; display: block;">
+                                        {{/if}}
+                                    </div>
+                                    {{/if}}
+
+                                    {{!-- Message Text (Bottom) --}}
+                                    <p class="mb-0 text-end" style="word-wrap: break-word;">{{text}}</p>
                                 </div>
 
                                 <div class="message-actions">
-                                    <button class="action-btn" onclick="promptEdit('{{_id}}', '{{text}}')">
+                                    <button class="action-btn" onclick="openEditModal('{{_id}}', '{{text}}')">
                                         <i class="fas fa-edit" style="font-size: 0.65rem;"></i> Edit
                                     </button>
 
-                                    <form action="/messages/delete/{{_id}}" method="POST" class="m-0">
-                                        <button type="submit" class="action-btn"
-                                            onclick="return confirm('Admin: Delete?')">
+                                    <form id="delete-form-{{_id}}" action="/messages/delete-message/{{_id}}"
+                                        method="POST" class="m-0">
+                                        <input type="hidden" name="_csrf" value="{{../csrfToken}}">
+                                        <button type="button" class="action-btn" onclick="confirmDelete('{{_id}}')">
                                             <i class="fas fa-trash-alt" style="font-size: 0.65rem;"></i> Delete
                                         </button>
                                     </form>
@@ -104,18 +117,49 @@
     </div>
 </div>
 
-<form id="editForm" method="POST" style="display:none;">
-    <input type="text" name="newText" id="editInput">
-</form>
+{{!-- Admin Edit Modal --}}
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" method="POST">
+                    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                    <input type="text" name="text" id="editText" class="form-control" required>
+                    <button type="submit" class="btn btn-primary mt-3 w-100">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Edit Script -->
 <script>
-    function promptEdit(id, oldText) {
-        const newText = prompt("Admin Edit:", oldText);
-        if (newText && newText !== oldText) {
-            const form = document.getElementById('editForm');
-            form.action = '/messages/edit/' + id;
-            document.getElementById('editInput').value = newText;
-            form.submit();
-        }
+    function openEditModal(msgId, text) {
+        document.getElementById('editForm').action = '/messages/edit-message/' + msgId;
+        document.getElementById('editText').value = text;
+        new bootstrap.Modal(document.getElementById('editModal')).show();
+    }
+
+    function confirmDelete(id) {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-form-' + id).submit();
+            }
+        })
     }
 </script>

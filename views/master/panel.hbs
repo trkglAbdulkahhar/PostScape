@@ -29,14 +29,19 @@
                         </td>
                         <td>{{formatDate lastActive}}</td>
                         <td>
-                            <form action="/master/role" method="POST" class="d-flex gap-2">
-                                <input type="hidden" name="userId" value="{{_id}}">
-                                <select name="newRole" class="form-select form-select-sm" style="width: 100px;">
-                                    <option value="user">User</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                                <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
-                            </form>
+                            {{#unless (eq this.role 'owner')}}
+                            <div class="ms-auto d-flex align-items-center gap-2">
+                                <form action="/master/role" method="POST" class="d-flex gap-2">
+                                    <input type="hidden" name="_csrf" value="{{../csrfToken}}">
+                                    <input type="hidden" name="userId" value="{{this._id}}">
+                                    <select name="newRole" class="form-select form-select-sm" style="width: auto;">
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                </form>
+                            </div>
+                            {{/unless}}
                         </td>
                     </tr>
                     {{/each}}

@@ -1,7 +1,7 @@
 <div class="container py-4">
     <div class="row">
         <div class="col-md-4">
-            <div class="card shadow-sm mb-4 sticky-top" style="top: 80px;">
+            <div class="card shadow-sm mb-4 sticky-top" style="top: 90px; z-index: 10;">
                 <div class="card-body p-4 text-center">
                     <div class="mb-3">
                         <div class="bg-dark text-white rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm"
@@ -28,16 +28,43 @@
                     <hr>
                     <div class="row text-center mt-3">
                         <div class="col border-end">
-                            <h5 class="fw-bold mb-0 text-primary">{{collectionsCount}}</h5>
-                            <small class="text-muted">Collections</small>
+                            <a href="/user/followers/{{user._id}}" class="text-decoration-none text-dark">
+                                <h5 class="fw-bold mb-0 text-primary">{{user.followers.length}}</h5>
+                                <small class="text-muted">Followers</small>
+                            </a>
+                        </div>
+                        <div class="col border-end">
+                            <a href="/user/following/{{user._id}}" class="text-decoration-none text-dark">
+                                <h5 class="fw-bold mb-0 text-info">{{user.following.length}}</h5>
+                                <small class="text-muted">Following</small>
+                            </a>
                         </div>
                         <div class="col">
                             <h5 class="fw-bold mb-0 text-success">{{likedPosts.length}}</h5>
-                            <small class="text-muted">Extracted Likes</small>
+                            <small class="text-muted">Likes</small>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {{#if followRequests.length}}
+            <div class="card shadow-sm border-warning mb-3">
+                <div class="card-header bg-warning text-dark fw-bold small">Follow Requests</div>
+                <ul class="list-group list-group-flush">
+                    {{#each followRequests}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                        <span class="small fw-bold">{{this.firstName}} {{this.lastName}}</span>
+                        <div>
+                            <button onclick="acceptRequest('{{this._id}}')" class="btn btn-sm btn-success p-1 px-2"><i
+                                    class="fas fa-check"></i></button>
+                            <button onclick="rejectRequest('{{this._id}}')" class="btn btn-sm btn-danger p-1 px-2"><i
+                                    class="fas fa-times"></i></button>
+                        </div>
+                    </li>
+                    {{/each}}
+                </ul>
+            </div>
+            {{/if}}
         </div>
 
         <div class="col-md-8">
@@ -61,7 +88,6 @@
 
                 <div class="card-body p-4">
                     <div class="tab-content" id="dashboardTabsContent">
-
                         <div class="tab-pane fade show active" id="liked-content" role="tabpanel">
                             <div class="row row-cols-1 row-cols-md-3 g-3">
                                 {{#each likedPosts}}
@@ -95,14 +121,13 @@
                                         class="card h-100 border-0 shadow-sm text-decoration-none folder-card">
                                         <div class="position-relative" style="height: 120px;">
                                             <img src="{{coverImage}}" class="card-img-top h-100 w-100 shadow-sm"
-                                                style="object-fit: cover; border-radius: 8px 8px 0 0;">
+                                                style="object-fit: cover; border-radius: 8px 8px 0 0;"
+                                                onerror="this.src='/img/no_image.png'">
                                             <span class="badge bg-dark position-absolute top-0 end-0 m-2">
                                                 {{#if this.posts}}
                                                 {{this.posts.length}} {{#if (eq this.posts.length
                                                 1)}}item{{else}}items{{/if}}
-                                                {{else}}
-                                                0 items
-                                                {{/if}}
+                                                {{else}}0 items{{/if}}
                                             </span>
                                         </div>
                                         <div class="card-body p-2">
@@ -113,20 +138,39 @@
                                 {{/each}}
                                 {{#unless collections.length}}
                                 <div class="col-12">
-                                    <div class="col-12">
-                                        <div class="d-flex flex-column align-items-center justify-content-center py-5"
-                                            style="width: 100%;">
-                                            <i class="fas fa-folder-open fa-2x text-muted mb-2 opacity-50"></i>
-                                            <span class="text-muted fw-semibold">No saved posts in this section.</span>
-                                        </div>
+                                    <div class="d-flex flex-column align-items-center justify-content-center py-5"
+                                        style="width: 100%;">
+                                        <i class="fas fa-folder-open fa-2x text-muted mb-2 opacity-50"></i>
+                                        <span class="text-muted fw-semibold">No saved posts in this section.</span>
                                     </div>
-                                    {{/unless}}
                                 </div>
+                                {{/unless}}
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="row mt-5 pt-4 border-top">
+        <div class="col-12">
+            <h4 class="fw-bold mb-3">Who to Follow</h4>
+            <div class="d-flex flex-nowrap overflow-auto gap-3 pb-3">
+                {{#each suggestions}}
+                <div class="card shadow-sm border-0 flex-shrink-0" style="width: 180px;">
+                    <div class="card-body text-center p-3">
+                        <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
+                            style="width: 50px; height: 50px;">
+                            {{initials this.name}}
+                        </div>
+                        <h6 class="fw-bold text-truncate mb-1">{{this.name}}</h6>
+                        <button onclick="followUser('{{this._id}}')"
+                            class="btn btn-primary btn-sm rounded-pill w-100">Follow</button>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+</div>

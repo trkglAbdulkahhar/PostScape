@@ -25,10 +25,30 @@ const cleanGhosts = async () => {
     try {
         const User = require('./models/User');
         const Post = require('./models/Post');
+
+        // 1. SLUG MIGRATION
+        const postsWithoutSlug = await Post.find({ slug: { $exists: false } });
+        if (postsWithoutSlug.length > 0) {
+            console.log(`🐌 Migrating ${postsWithoutSlug.length} posts to slugs...`);
+            for (let post of postsWithoutSlug) {
+                // Pre-save hook will generate the slug
+                await post.save();
+            }
+            console.log("✅ Slug migration complete.");
+        }
+
+        // 2. USER GHOST CLEANUP & SLUG MIGRATION
         const users = await User.find();
+        const slugify = require('slugify');
 
         for (let user of users) {
-            // Fix interest format if it's that weird string
+            // SLUG GENERATION
+            if (!user.slug && user.nickname) {
+                user.slug = slugify(user.nickname, { lower: true, strict: true, locale: 'tr' });
+                await user.save({ validateBeforeSave: false });
+            }
+
+            // ... existing cleanup logic ...
             if (user.interests && user.interests.length > 0 && typeof user.interests[0] === 'string' && user.interests[0].includes('{')) {
                 user.interests = [];
             }
@@ -49,12 +69,10 @@ const cleanGhosts = async () => {
             user.likedPosts = validLiked;
             user.savedPosts = validSaved;
 
-            // Save without validation to be silent
             await user.save({ validateBeforeSave: false });
         }
-        console.log("✨ System Sync: OK");
     } catch (err) {
-        // Silent
+        console.error("Startup Script Error:", err);
     }
 };
 cleanGhosts(); // Run on start
@@ -64,12 +82,11 @@ const promoteAdmin = async () => {
     try {
         const User = require('./models/User');
         await User.findOneAndUpdate({ email: 'tester@example.com' }, { role: 'admin' });
-        console.log('👑 Admin yetkisi başarıyla verildi: tester@example.com');
     } catch (err) {
         console.log('Hata:', err);
     }
 };
-promoteAdmin();
+// promoteAdmin(); // Disabled to preserve 'Owner' role from fix_roles.js
 
 // Initialize App
 const app = express();
@@ -100,6 +117,38 @@ app.use(session({
         maxAge: 1000 * 60 * 60 * 24 // 1 day
     }
 }));
+
+// CSRF Protection
+const csurf = require('csurf');
+const csrfOptions = { cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production' } };
+const csrfProtection = csurf(csrfOptions);
+const csrfPermissive = csurf({ ...csrfOptions, ignoreMethods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE'] });
+
+// Dual CSRF Middleware
+app.use((req, res, next) => {
+    const contentType = req.get('Content-Type');
+    if (contentType && contentType.startsWith('multipart/form-data')) {
+        // Multipart: Skip validation here (handled in route), but attach csrfToken function
+        csrfPermissive(req, res, next);
+    } else {
+        // Standard: Validate everything except GET/HEAD/OPTIONS
+        csrfProtection(req, res, next);
+    }
+});
+
+// Global CSRF Token Middleware
+app.use((req, res, next) => {
+    // Now this will always work because one of the above middlewares definitely ran
+    res.locals.csrfToken = req.csrfToken();
+    next();
+});
+
+// CSRF Error Handler
+app.use((err, req, res, next) => {
+    if (err.code !== 'EBADCSRFTOKEN') return next(err);
+    res.status(403);
+    res.send('Güvenlik Hatası: Form oturumunuz sona erdi. Lütfen sayfayı yenileyip tekrar deneyin. (CSRF Error)');
+});
 
 // 5. View Engine
 app.engine('.hbs', engine({
@@ -139,6 +188,10 @@ app.engine('.hbs', engine({
         eq: function (a, b) { return String(a) === String(b); },
         notEq: function (a, b) { return String(a) !== String(b); },
         or: function (a, b) { return a || b; },
+        formatTime: (date) => {
+            const d = new Date(date);
+            return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        },
         truncate: function (str, len) {
             if (str && str.length > len) {
                 return str.substring(0, len - 3) + '...';
@@ -155,6 +208,15 @@ app.engine('.hbs', engine({
             if (!likesArray || !userId) return false;
             // likesArray içindeki her bir ID'yi stringe çevirip kullanıcının ID'si ile kıyaslar
             return likesArray.some(id => id.toString() === userId.toString());
+        },
+        isFollowing: function (userId, followersArray) {
+            if (!userId || !followersArray) return false;
+            return followersArray.some(id => id.toString() === userId.toString());
+        },
+        slugify: function (text) {
+            if (!text) return '';
+            const slugify = require('slugify'); // Require inside helper to ensure it's available
+            return slugify(text, { lower: true, strict: true, locale: 'tr' });
         }
     }
 }));
@@ -175,8 +237,10 @@ function isAuthenticated(req, res, next) {
 // --- GLOBAL DATA MIDDLEWARE (The Fix) ---
 app.use(async (req, res, next) => {
     // Default locals
-    res.locals.user = null; // Important: use 'user' not 'currentUser' to match views if possible, or adapt views
-    res.locals.currentUser = null; // Keep compatibility
+    res.locals.user = null;
+    res.locals.currentUser = null; // Legacy Support
+    res.locals.isAdmin = false;
+    res.locals.isMaster = false;
     res.locals.collections = [];
     res.locals.onlineCount = 1;
     res.locals.savedPostIds = []; // Critical for the Icons
@@ -191,6 +255,16 @@ app.use(async (req, res, next) => {
                 // Update session if needed (optional) but rely on local variable
                 res.locals.user = user;
                 res.locals.currentUser = user; // Backup
+
+                // SYNC SESSION ROLE (Crucial for Auth Middleware)
+                if (req.session.user.role !== user.role) {
+                    req.session.user.role = user.role;
+                    req.session.save(); // Ensure persistence
+                }
+
+                // Role Helpers
+                res.locals.isAdmin = user.role === 'admin' || user.role === 'owner';
+                res.locals.isMaster = user.role === 'owner';
 
                 // Update Last Active
                 await User.findByIdAndUpdate(user._id, { lastActive: new Date() });
@@ -226,6 +300,22 @@ app.use(async (req, res, next) => {
 
                 res.locals.recentContacts = recentContacts;
 
+                // 5. FETCH NOTIFICATIONS
+                const Notification = require('./models/Notification'); // Ensure loaded
+                const myNotifications = await Notification.find({ recipient: user._id })
+                    .sort({ createdAt: -1 })
+                    .limit(10)
+                    .populate('sender', 'name image')
+                    .lean();
+
+                const unreadNotifs = await Notification.countDocuments({ recipient: user._id, read: false });
+
+                res.locals.notifications = myNotifications;
+                res.locals.unreadCount = unreadNotifs;
+
+                // Mark notifications as read functionality will be part of the dropdown open action in frontend or a separate API.
+                // For simplified UX as per prompt: just showing them.
+
             } else {
                 // User in session but not in DB? Force logout.
                 req.session.destroy();
@@ -241,6 +331,11 @@ app.use(async (req, res, next) => {
         const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
         const count = await User.countDocuments({ lastActive: { $gte: fiveMinAgo } });
         res.locals.onlineCount = count;
+
+        // NEW: Total Visitor Count (For Footer & Admin)
+        const totalUsers = await User.countDocuments({});
+        res.locals.totalUsers = totalUsers;
+
     } catch (e) { console.error(e); }
 
     next();
@@ -285,23 +380,26 @@ app.get('/secret-setup-owner', async (req, res) => {
 
 
 // Protected Routes Guard
-app.use(isAuthenticated);
+app.use(isAuthenticated); // Önce giriş yapılmış mı bak
 
+const { isAdmin, isOwner } = require('./middleware/auth');
+const adminRoutes = require('./routes/admin');
+const masterRoutes = require('./routes/master');
 
+// 1. ÖZEL PANELLER (Yüksek Öncelik - Tıkanmayı Önlemek İçin En Üste)
+app.use('/admin', isAdmin, adminRoutes);
+app.use('/master', isOwner, masterRoutes);
 
-// Specific Routes First
-app.use('/admin', require('./routes/admin'));
-app.use('/master', require('./routes/master'));
-app.use('/', require('./routes/adminConversations')); // Check this path
-
-// Feature Routes
-app.use('/', require('./routes/user'));
+// 2. KULLANICI ÖZELLİKLERİ
+app.use('/user', require('./routes/user'));
 app.use('/posts', require('./routes/posts'));
 app.use('/messages', require('./routes/messages'));
-app.use('/collections', require('./routes/collections')); // Register Collections Route
+app.use('/collections', require('./routes/collections'));
+app.use('/notifications', require('./routes/notification')); // NEW ROUTE
 
-// 4. Root Route & Dashboard
+// 3. GENEL SAYFALAR (En Düşük Öncelik)
 app.use('/', require('./routes/index'));
+app.use('/', require('./routes/adminConversations'));
 
 // 8. Error Handling
 app.use((req, res, next) => {

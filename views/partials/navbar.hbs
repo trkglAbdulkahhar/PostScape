@@ -1,7 +1,7 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top shadow-sm">
     <div class="container">
         <a class="navbar-brand fw-bold" href="/dashboard">
-            <i class="fas fa-layer-group me-2"></i>PostScape
+            <i class="fas fa-layer-group me-2 text-primary"></i>PostScape
         </a>
 
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -9,17 +9,19 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarNav">
-
             <ul class="navbar-nav me-auto">
                 {{#if currentUser}}
                 <li class="nav-item">
                     <a class="nav-link" href="/feed"><i class="fas fa-stream me-1"></i> All Posts</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/posts/mine"><i class="fas fa-file-alt me-1"></i> My Posts</a>
+                    <a class="nav-link" href="/following-feed"><i class="fas fa-users me-1"></i> Following</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/messages"><i class="fas fa-envelope me-1"></i> Messages</a>
+                    <a class="nav-link" href="/posts/my-posts"><i class="fas fa-file-alt me-1"></i> My Posts</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/messages/inbox"><i class="fas fa-envelope me-1"></i> Messages</a>
                 </li>
                 {{/if}}
             </ul>
@@ -30,12 +32,16 @@
                     <span class="badge bg-dark border border-secondary text-light rounded-pill px-3 py-2">
                         <i class="fas fa-circle text-success me-1"
                             style="font-size: 0.6rem; vertical-align: middle;"></i>
-                        <span id="online-count" class="fw-bold">{{onlineCount}}</span> Online
+                        <span id="online-count" class="fw-bold">0</span> Online
                     </span>
                 </li>
 
                 <li class="nav-item me-3">
-                    <a href="/posts/add" class="btn btn-success btn-sm fw-bold">
+                    {{> notification-bell}}
+                </li>
+
+                <li class="nav-item me-3">
+                    <a href="/posts/add" class="btn btn-success btn-sm fw-bold rounded-pill px-3">
                         <i class="fas fa-plus"></i> New Post
                     </a>
                 </li>
@@ -43,56 +49,45 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarDropdown"
                         role="button" data-bs-toggle="dropdown">
-                        <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
                             style="width: 32px; height: 32px;">
                             {{initials currentUser.name}}
                         </div>
                         <span class="fw-bold">{{currentUser.name}}</span>
                     </a>
-
-                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li>
-                            <a class="dropdown-item" href="/dashboard">
-                                <i class="fas fa-user-circle me-2 text-primary"></i> My Dashboard
-                            </a>
-                        </li>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                        <li><a class="dropdown-item" href="/dashboard"><i
+                                    class="fas fa-user-circle me-2 text-primary"></i> My Dashboard</a></li>
 
                         {{#if (eq currentUser.role 'owner')}}
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <li>
-                            <a class="dropdown-item text-warning fw-bold" href="/master">
-                                <i class="fas fa-crown me-2"></i> Master Panel
-                            </a>
-                        </li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="/master"><i
+                                    class="fas fa-crown me-2"></i> Master Panel</a></li>
                         {{/if}}
 
                         {{#if (or (eq currentUser.role 'admin') (eq currentUser.role 'owner'))}}
-                        <li>
-                            <a class="dropdown-item text-danger fw-bold" href="/admin">
-                                <i class="fas fa-shield-alt me-2"></i> Admin Panel
-                            </a>
-                        </li>
+                        <li><a class="dropdown-item text-danger fw-bold" href="/admin"><i
+                                    class="fas fa-shield-alt me-2"></i> Admin Panel</a></li>
                         {{/if}}
 
                         <li>
                             <hr class="dropdown-divider">
                         </li>
-                        <li>
-                            <a class="dropdown-item text-muted" href="/auth/logout">
-                                <i class="fas fa-sign-out-alt me-2"></i> Logout
-                            </a>
-                        </li>
+                        <li><a class="dropdown-item text-muted" href="/auth/logout"><i
+                                    class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
                     </ul>
                 </li>
                 {{else}}
-                <li class="nav-item">
-                    <a class="nav-link" href="/auth/login">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-outline-light ms-2" href="/auth/register">Sign Up</a>
-                </li>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/auth/login">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-outline-light ms-lg-2 rounded-pill px-4" href="/auth/register">Sign Up</a>
+                    </li>
+                </ul>
                 {{/if}}
             </ul>
         </div>

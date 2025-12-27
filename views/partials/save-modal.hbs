@@ -7,11 +7,11 @@
             </div>
 
             <div class="modal-body p-0">
-
                 {{#if collections}}
                 <div class="list-group list-group-flush">
                     {{#each collections}}
                     <form action="/collections/save" method="POST" class="m-0 p-0">
+                        <input type="hidden" name="_csrf" value="{{../csrfToken}}">
                         <input type="hidden" name="postId" class="dynamic-post-id">
                         <input type="hidden" name="collectionId" value="{{_id}}">
 
@@ -38,6 +38,7 @@
 
                     <div class="collapse mt-2" id="createNewCollapse">
                         <form action="/collections/save" method="POST">
+                            <input type="hidden" name="_csrf" value="{{csrfToken}}">
                             <input type="hidden" name="postId" class="dynamic-post-id">
 
                             <div class="input-group">
@@ -56,8 +57,7 @@
 
 <script>
     function openSaveModal(postId) {
-        // Find ALL hidden inputs with class 'dynamic-post-id' and set their value
-        // (Because we have multiple forms inside the modal now)
+        // Modal açıldığında sayfadaki ilgili postun ID'sini tüm formlara dağıtır
         const inputs = document.querySelectorAll('.dynamic-post-id');
         inputs.forEach(input => {
             input.value = postId;

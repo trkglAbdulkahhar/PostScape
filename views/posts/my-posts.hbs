@@ -22,6 +22,7 @@
                                         class="fas fa-edit me-2"></i>Edit</a></li>
                             <li>
                                 <form action="/posts/delete/{{_id}}" method="POST" class="d-inline">
+                                    <input type="hidden" name="_csrf" value="{{../csrfToken}}">
                                     <button type="submit" class="dropdown-item text-danger"><i
                                             class="fas fa-trash-alt me-2"></i>Delete</button>
                                 </form>
@@ -30,7 +31,7 @@
                     </div>
                 </div>
 
-                <a href="/posts/{{_id}}" class="text-decoration-none text-dark h-100 d-flex flex-column">
+                <a href="/posts/{{slug}}" class="text-decoration-none text-dark h-100 d-flex flex-column">
                     {{#if image}}
                     <div
                         style="height: 200px; overflow: hidden; border-top-left-radius: 5px; border-top-right-radius: 5px;">

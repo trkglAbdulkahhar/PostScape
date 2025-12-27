@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// Middleware: Strict Owner Check
 router.use((req, res, next) => {
-    // Check if user is logged in AND is owner
-    if (req.session.user && req.session.user.role === 'owner') {
+    const role = req.session.user ? req.session.user.role : null;
+    // Artık hem admin hem owner girebilecek
+    if (role === 'owner' || role === 'admin') {
         next();
     } else {
-        console.warn(`Unauthorized access attempt to Master Panel by user: ${req.session.user ? req.session.user._id : 'Guest'}`);
-        res.redirect('/user/dashboard'); // Redirect to their dashboard, not home
+        console.warn("Yetkisiz Master Girişi:", req.session.user?._id);
+        res.redirect('/user/dashboard');
     }
 });
 

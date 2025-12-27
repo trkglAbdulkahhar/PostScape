@@ -3,6 +3,7 @@
         <div class="col-md-6 shadow-lg p-5 rounded-4 bg-white">
             <h2 class="fw-bold text-center mb-4">Complete Your Profile 🚀</h2>
             <form action="/setup-profile" method="POST">
+                <input type="hidden" name="_csrf" value="{{csrfToken}}">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label small fw-bold">First Name</label>

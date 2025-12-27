@@ -12,6 +12,7 @@
                     {{/if}}
 
                     <form action="/messages/new" method="POST">
+                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
                         <div class="mb-3 position-relative">
                             <label class="form-label fw-bold">Recipient Name</label>
                             <input type="text" id="userSearchInput" class="form-control rounded-pill"
@@ -38,17 +39,22 @@
                                 }
 
                                 try {
-                                    const res = await fetch(`/search-users?query=${query}`);
+                                    const res = await fetch(`/user/search-users?query=${query}`);
                                     const users = await res.json();
 
+                                    console.log('Gelen Kullanıcılar:', users);
+
                                     if (users.length > 0) {
-                                        resultsList.innerHTML = users.map(user => `
-                                            <li class="list-group-item list-group-item-action cursor-pointer" 
-                                                onclick="selectUser('${user._id}', '${user.firstName} ${user.lastName} (@${user.nickname})')">
-                                                <strong>${user.firstName} ${user.lastName}</strong> 
-                                                <small class="text-muted">@${user.nickname}</small>
-                                            </li>
-                                        `).join('');
+                                        resultsList.innerHTML = users.map(user => {
+                                            const displayName = user.firstName ? `${user.firstName} ${user.lastName}` : user.name;
+                                            return `
+                                                <li class="list-group-item list-group-item-action cursor-pointer" 
+                                                    onclick="selectUser('${user._id}', '${displayName} (@${user.nickname})')">
+                                                    <strong>${displayName}</strong> 
+                                                    <small class="text-muted">@${user.nickname}</small>
+                                                </li>
+                                            `;
+                                        }).join('');
                                         resultsList.classList.remove('d-none');
                                     } else {
                                         resultsList.classList.add('d-none');

@@ -5,6 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const Post = require('../models/Post');
 const upload = require('../middleware/upload');
+const csurf = require('csurf');
+const csrfProtection = csurf({ cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production' } });
 
 // --- HELPER FUNCTION (Must be defined at the top scope) ---
 const deleteFile = (filePath) => {
@@ -16,12 +18,10 @@ const deleteFile = (filePath) => {
     if (fs.existsSync(absolutePath)) {
         try {
             fs.unlinkSync(absolutePath);
-            console.log("✅ File physically deleted:", filePath);
         } catch (err) {
             console.error("❌ Error deleting file:", err);
         }
     } else {
-        console.log("⚠️ File not found on disk, skipping deletion:", absolutePath);
     }
 };
 
@@ -53,7 +53,7 @@ router.get('/add', (req, res) => {
 });
 
 // POST /posts -> Create Logic
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/', upload.single('image'), csrfProtection, async (req, res) => {
     try {
         // Tag splitting logic
         let tags = [];
@@ -104,7 +104,7 @@ router.get('/edit/:id', async (req, res) => {
 });
 
 // 2. PROCESS EDIT (POST)
-router.post('/edit/:id', upload.single('image'), async (req, res) => {
+router.post('/edit/:id', upload.single('image'), csrfProtection, async (req, res) => {
     try {
         if (!req.session.user) return res.redirect('/auth/login');
 
@@ -188,8 +188,8 @@ router.post('/delete/:id', async (req, res) => {
     }
 });
 
-// GET /posts/mine -> User's Own Posts (THE FIX: This is now before /:id)
-router.get('/mine', async (req, res) => {
+// GET /posts/mine -> User's Own Posts
+router.get(['/mine', '/my-posts'], async (req, res) => {
     try {
         if (!req.session.user) return res.redirect('/auth/login');
         const posts = await Post.find({ user: req.session.user._id })
@@ -225,13 +225,24 @@ router.post('/like/:id', async (req, res) => {
         const isLiked = post.likes.some(id => id.toString() === userId.toString());
 
         if (isLiked) {
-            // 1. Kalbi boşalt: Listeden kullanıcıyı çıkar
+            // 1. Un-like
             await Post.findByIdAndUpdate(postId, { $pull: { likes: userId } });
             await User.findByIdAndUpdate(userId, { $pull: { likedPosts: postId } });
         } else {
-            // 2. Kalbi doldur: Listeye kullanıcıyı ekle
+            // 2. Like
             await Post.findByIdAndUpdate(postId, { $addToSet: { likes: userId } });
             await User.findByIdAndUpdate(userId, { $addToSet: { likedPosts: postId } });
+
+            // Create Notification if not self-like
+            if (post.user.toString() !== userId.toString()) {
+                const Notification = require('../models/Notification');
+                await Notification.create({
+                    recipient: post.user,
+                    sender: userId,
+                    type: 'like',
+                    post: postId
+                });
+            }
         }
 
         // Sayfayı sessizce render et (yenile)
@@ -247,12 +258,33 @@ router.post('/save/:id', async (req, res) => {
     try {
         if (!req.session.user) return res.redirect('/auth/login');
         const User = require('../models/User');
+        const Collection = require('../models/Collection'); // Ensure Collection model is available
         const user = await User.findById(req.session.user._id);
 
         // Toggle Save
         if (user.savedPosts.includes(req.params.id)) {
+            // UNSAVE OPERATION
             user.savedPosts.pull(req.params.id);
+
+            // SYNC CLEANUP: Also remove from any collections
+            await Collection.updateMany(
+                { _id: { $in: user.collections } },
+                { $pull: { posts: req.params.id } }
+            );
+
+            // AUTO-DELETE EMPTY FOLDERS
+            const userCollections = await Collection.find({ _id: { $in: user.collections } });
+            const emptyCollections = userCollections.filter(c => !c.posts || c.posts.length === 0);
+
+            if (emptyCollections.length > 0) {
+                const emptyIds = emptyCollections.map(c => c._id);
+                await Collection.deleteMany({ _id: { $in: emptyIds } });
+                user.collections = user.collections.filter(id => !emptyIds.map(e => e.toString()).includes(id.toString()));
+                console.log(`[Unsave] Auto-deleted ${emptyIds.length} empty folders.`);
+            }
+
         } else {
+            // SAVE OPERATION
             user.savedPosts.push(req.params.id);
         }
         await user.save();
@@ -264,16 +296,23 @@ router.post('/save/:id', async (req, res) => {
     }
 });
 
-// GET /posts/:id/comments -> The Dedicated Split-View Page
-router.get('/:id/comments', async (req, res) => {
+// GET /posts/:slug/comments -> The Dedicated Split-View Page
+router.get('/:slug/comments', async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id)
+        // Find by slug first
+        const post = await Post.findOne({ slug: req.params.slug })
             .populate('user')
-            // Correctly populate the user field inside the embedded comments array
             .populate('comments.user')
-            .lean(); // <--- CRITICAL FIX: Converts Mongoose Doc to Plain JSON
+            .lean();
 
-        if (!post) return res.render('error', { message: 'Post not found' });
+        if (!post) {
+            // Fallback for ID based lookup if link is old
+            if (mongoose.Types.ObjectId.isValid(req.params.slug)) {
+                const postById = await Post.findById(req.params.slug);
+                if (postById) return res.redirect(301, `/posts/${postById.slug}/comments`);
+            }
+            return res.render('error', { message: 'Post not found' });
+        }
 
         res.render('posts/comments', {
             post,
@@ -321,20 +360,26 @@ router.post('/comment/:id', async (req, res) => {
 });
 
 // 3. DYNAMIC ROUTE (Must be LAST)
-// GET /posts/:id -> VIEW SINGLE POST
-router.get('/:id', async (req, res) => {
+// GET /posts/:slug -> VIEW SINGLE POST (Updated for Slug)
+router.get('/:slug', async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.render('error', { message: 'Invalid Post ID' });
-        }
+        const slug = req.params.slug;
 
-        const post = await Post.findById(req.params.id)
+        // Find by slug instead of ID
+        const post = await Post.findOne({ slug: slug })
             .populate('user', 'name')
-            // We only need comments length, so no need to populate inside embedded comments
-            // .populate('comments') is implicit for embedded docs
-            .lean(); // <--- CRITICAL FIX
+            .lean();
 
-        if (!post) return res.render('error', { message: 'Post not found' });
+        if (!post) {
+            // Fallback: Check if it's an ID (Old Link Support)
+            if (mongoose.Types.ObjectId.isValid(slug)) {
+                const postById = await Post.findById(slug);
+                if (postById && postById.slug) {
+                    return res.redirect(301, `/posts/${postById.slug}`);
+                }
+            }
+            return res.render('error', { message: 'Post not found' });
+        }
 
         // Check if liked by current user (Robust check)
         let isLiked = false;

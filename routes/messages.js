@@ -10,26 +10,42 @@ router.use((req, res, next) => {
     next();
 });
 
-// GET /messages
-router.get('/', async (req, res) => {
+// --- HELPER: Render Inbox with Active Chat ---
+const renderInbox = async (req, res, activeChatId = null) => {
     try {
-        if (!req.session.user) return res.redirect('/auth/login');
+        const userId = req.session.user._id;
 
-        // 1. Get all conversations for the left pane
-        const conversations = await Conversation.find({
-            members: { $in: [req.session.user._id] }
-        }).populate('members', 'name').sort({ updatedAt: -1 }).lean();
+        // 1. Get all conversations
+        let conversations = await Conversation.find({
+            members: { $in: [userId] }
+        }).populate('members', 'name nickname slug image').sort({ updatedAt: -1 }).lean();
+
+        // 2. Pre-process conversations to identify "One-on-One" target
+        // This helps the view link to /messages/nickname
+        conversations = conversations.map(c => {
+            const otherUser = c.members.find(m => m._id.toString() !== userId.toString()) || c.members[0]; // Fallback to self if alone
+            return {
+                ...c,
+                otherUser // Attach for view usage
+            };
+        });
 
         let messages = [];
         let activeChat = null;
-        const activeChatId = req.query.id; // Switch chat based on URL ID
 
-        // 2. If a chat is selected, get its messages
         if (activeChatId) {
-            activeChat = await Conversation.findById(activeChatId).populate('members', 'name').lean();
+            activeChat = await Conversation.findOne({
+                _id: activeChatId,
+                members: { $in: [userId] }
+            }).populate('members', 'name nickname image').lean();
+
             if (activeChat) {
                 messages = await Message.find({ conversationId: activeChatId })
-                    .populate('sender', 'name')
+                    .populate('sender', 'name image')
+                    .populate({
+                        path: 'sharedPost',
+                        populate: { path: 'user', select: 'name' }
+                    })
                     .sort({ createdAt: 1 })
                     .lean();
             }
@@ -38,15 +54,25 @@ router.get('/', async (req, res) => {
         res.render('messages/inbox', {
             conversations,
             messages,
-            activeChatId,
+            activeChatId, // Pass ID for active state checking
             activeChat,
             hasConversations: conversations.length > 0,
-            user: req.session.user
+            user: req.session.user,
+            csrfToken: res.locals.csrfToken // Ensure local is passed explicitly if needed (though global handles it)
         });
+
     } catch (err) {
-        console.error("Inbox Error:", err);
+        console.error("Inbox Render Error:", err);
         res.redirect('/dashboard');
     }
+};
+
+// GET /messages (Root)
+router.get(['/', '/inbox'], async (req, res) => {
+    if (!req.session.user) return res.redirect('/auth/login');
+    // Support legacy query param ?id=...
+    const queryId = req.query.id;
+    await renderInbox(req, res, queryId);
 });
 
 // GET /messages/t/:userId -> START/OPEN CHAT
@@ -118,6 +144,18 @@ router.post('/new', async (req, res) => {
             });
         }
 
+        // BACKEND SENDING GATEKEEPER
+        const currentUser = await User.findById(myId).select('following');
+        const isFollowing = currentUser.following.includes(targetUser._id);
+
+        if (!isFollowing) {
+            return res.render('messages/new', {
+                error: 'Sadece takip ettiğin kişilere mesaj gönderebilirsiniz.',
+                username,
+                text
+            });
+        }
+
         // 3. Find or Create Conversation
         let conversation = await Conversation.findOne({
             members: { $all: [myId, targetUser._id] }
@@ -151,10 +189,52 @@ router.post('/new', async (req, res) => {
     }
 });
 
-// GET /messages/:conversationId -> VIEW CHAT ROOM (Redirect to Split View)
-router.get('/:id', (req, res) => {
-    // Enforce split-screen by redirecting to the query param format
-    res.redirect('/messages?id=' + req.params.id);
+// GET /messages/:identifier -> VIEW CHAT (Supports ID or Nickname)
+router.get('/:identifier', async (req, res) => {
+    try {
+        if (!req.session.user) return res.redirect('/auth/login');
+        const identifier = req.params.identifier;
+        const mongoose = require('mongoose');
+
+        // Case 1: It's a Conversation ID (Legacy or Direct Link)
+        if (mongoose.Types.ObjectId.isValid(identifier)) {
+            // Check if it's a CONVERSATION
+            const conv = await Conversation.exists({ _id: identifier });
+            if (conv) {
+                return await renderInbox(req, res, identifier);
+            }
+        }
+
+        // Case 2: It's a Slug (User lookup)
+        // Try finding by slug (Preferred) or Nickname (Legacy fallback)
+        const targetUser = await User.findOne({
+            $or: [{ slug: identifier }, { nickname: identifier }]
+        });
+        if (targetUser) {
+            // Find conversation between current user and target user
+            const conversation = await Conversation.findOne({
+                members: { $all: [req.session.user._id, targetUser._id] }
+            });
+
+            if (conversation) {
+                // RENDER AT THIS URL (No Redirect, keeps /messages/nickname)
+                return await renderInbox(req, res, conversation._id);
+            } else {
+                // USER REQUEST CHANGE: Do NOT create automatically. Show Error.
+                return res.render('error', {
+                    message: 'Böyle bir sohbet bulunamadı.',
+                    description: 'Bu kullanıcıyla henüz bir sohbetiniz yok. Yeni mesaj oluşturarak başlayabilirsiniz.'
+                });
+            }
+        }
+
+        // Case 3: Not found -> Default Inbox
+        res.redirect('/messages');
+
+    } catch (err) {
+        console.error("Message Route Error:", err);
+        res.redirect('/messages');
+    }
 });
 
 // POST /messages/share -> Share a post to a user
@@ -162,6 +242,19 @@ router.post('/share', async (req, res) => {
     try {
         const { recipientId, postId, text } = req.body;
         const senderId = req.session.user._id;
+
+        // BACKEND SENDING GATEKEEPER (Share)
+        const sender = await User.findById(senderId).select('following');
+        const isFollowing = sender.following.includes(recipientId);
+
+        if (!isFollowing) {
+            return res.status(403).render('error', {
+                title: 'Access Denied',
+                statusCode: 403,
+                statusMessage: 'Forbidden',
+                description: 'Sadece takip ettiğin kişilere mesaj gönderebilirsiniz.'
+            });
+        }
 
         // 1. Find or Create Conversation
         let conversation = await Conversation.findOne({
@@ -234,20 +327,28 @@ router.post('/:id', async (req, res) => {
 
 // POST /messages/delete/:id
 // 1. DELETE MESSAGE
+// 1. DELETE MESSAGE
 router.post('/delete-message/:id', async (req, res) => {
     try {
         const message = await Message.findById(req.params.id);
-        if (!message || message.sender.toString() !== req.session.user._id.toString()) {
+        if (!message) return res.redirect('back');
+
+        // REFACTORED PERMISSION CHECK: Sender OR Admin OR Owner
+        const isSender = message.sender.toString() === req.session.user._id.toString();
+        const isAdmin = ['admin', 'owner'].includes(req.session.user.role);
+
+        if (!isSender && !isAdmin) {
             return res.redirect('back');
         }
+
         const conversationId = message.conversationId;
         await Message.findByIdAndDelete(req.params.id);
 
-        // Redirect to split-pane view
-        res.redirect(`/messages?id=${conversationId}`);
+        // Redirect back (Stay in place)
+        res.redirect('back');
     } catch (err) {
         console.error("Delete Error:", err);
-        res.redirect('/messages');
+        res.redirect('back');
     }
 });
 
@@ -255,17 +356,30 @@ router.post('/delete-message/:id', async (req, res) => {
 router.post('/edit-message/:id', async (req, res) => {
     try {
         const message = await Message.findById(req.params.id);
-        if (!message || message.sender.toString() !== req.session.user._id.toString()) {
+        if (!message) return res.redirect('back');
+
+        // REFACTORED PERMISSION CHECK: Sender OR Admin OR Owner
+        const isSender = message.sender.toString() === req.session.user._id.toString();
+        const isAdmin = ['admin', 'owner'].includes(req.session.user.role);
+
+        if (!isSender && !isAdmin) {
             return res.redirect('back');
         }
-        message.text = req.body.text;
+
+        const { text } = req.body;
+        // Empty String Protection
+        if (!text || !text.trim()) {
+            return res.redirect('back');
+        }
+
+        message.text = text.trim();
         await message.save();
 
-        // Redirect to split-pane view
-        res.redirect(`/messages?id=${message.conversationId}`);
+        // Redirect back (Stay in place)
+        res.redirect('back');
     } catch (err) {
         console.error("Edit Error:", err);
-        res.redirect('/messages');
+        res.redirect('back');
     }
 });
 

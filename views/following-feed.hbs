@@ -1,0 +1,101 @@
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold m-0"><i class="fas fa-user-friends me-2 text-primary"></i>Following Feed</h3>
+    </div>
+
+    {{#if posts.length}}
+    <div class="row row-cols-1 row-cols-md-3 g-4" id="postGrid">
+        {{#each posts}}
+        <div class="col post-card-wrapper" style="animation-delay: {{@index}}00ms">
+            <!-- Post Card Reuse -->
+            <div class="card h-100 shadow-sm post-card" onclick="goToPost('{{_id}}', '{{slug}}')">
+                {{#if image}}
+                <img src="{{image}}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                {{/if}}
+                <div class="card-body">
+                    <h5 class="fw-bold mb-2 card-title">{{title}}</h5>
+                    <div class="mb-3 post-tags">
+                        {{#each tags}}
+                        <span class="badge rounded-pill bg-light text-primary border">@{{this}}</span>
+                        {{/each}}
+                    </div>
+                    <!-- Truncate body for cleaner look -->
+                    <p class="text-muted small mb-0 line-clamp-3">{{body}}</p>
+                </div>
+                <div class="card-footer bg-white border-0 pb-3 d-flex align-items-center">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
+                        style="width: 32px; height: 32px; font-size: 0.8rem; font-weight: bold;">
+                        {{initials user.name}}
+                    </div>
+                    <small class="text-dark fw-semibold me-auto">{{user.name}}</small>
+
+                    <!-- Like Button -->
+                    <form action="/posts/like/{{this._id}}" method="POST" class="d-inline"
+                        onclick="event.stopPropagation();">
+                        <input type="hidden" name="_csrf" value="{{../csrfToken}}">
+                        <button type="submit" class="btn p-0 border-0 bg-transparent">
+                            <i
+                                class="{{#if (isLikedByUser this.likes ../user._id)}}fas text-danger{{else}}far text-dark{{/if}} fa-heart"></i>
+                            <span class="ms-1 small fw-bold">{{this.likes.length}}</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <div class="text-center py-5">
+        <i class="fas fa-users fa-3x text-muted opacity-50 mb-3"></i>
+        <h5 class="fw-bold text-secondary">It's quiet here.</h5>
+        <p class="text-muted">You are not following anyone yet, or your friends haven't posted.</p>
+        <a href="/feed" class="btn btn-primary rounded-pill mt-3">Discover People</a>
+    </div>
+    {{/if}}
+</div>
+
+<script>
+    // Navigation Logic
+    // Navigation Logic
+    async function goToPost(postId, slug) {
+        fetch(`/posts/track-click/${postId}`, { method: 'POST' }).catch(() => { });
+        window.location.href = `/posts/${slug}`;
+    }
+</script>
+
+<style>
+    .post-card-wrapper {
+        animation: slideIn 0.5s ease forwards;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .post-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        cursor: pointer;
+    }
+
+    .post-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .line-clamp-3 {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>

@@ -1,6 +1,13 @@
-<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+<style>
+    .navbar {
+        margin-bottom: 0 !important;
+    }
+</style>
+<div class="d-flex justify-content-center align-items-center w-100"
+    style="min-height: calc(100vh - 56px); background: url('/img/background/register.jpg') no-repeat center center; background-size: cover; background-attachment: fixed;">
     <div class="col-md-5 col-lg-4">
-        <div class="card shadow-lg border-0 rounded-3">
+        <div class="card shadow-lg border-0 rounded-3"
+            style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px);">
             <div class="card-body p-5">
                 <div class="mb-4">
                     <div class="nav nav-pills nav-fill bg-light rounded p-1" id="roleTabs" role="tablist">
@@ -23,6 +30,7 @@
                 </div>
 
                 <form action="/auth/register" method="POST">
+                    <input type="hidden" name="_csrf" value="{{csrfToken}}">
                     <input type="hidden" name="role" id="roleInput" value="{{#if isAdmin}}admin{{else}}user{{/if}}">
 
                     <div id="adminCodeGroup" class="mb-3" style="display: {{#if isAdmin}}block{{else}}none{{/if}};">

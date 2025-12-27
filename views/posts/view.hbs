@@ -33,6 +33,7 @@
                             </li>
                             <li>
                                 <form action="/posts/delete/{{post._id}}" method="POST" class="d-inline">
+                                    <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                     <button type="submit" class="dropdown-item text-danger"
                                         onclick="return confirm('Delete this post?');">
                                         <i class="fas fa-trash-alt me-2"></i>Delete
@@ -62,6 +63,7 @@
                         <div class="d-flex gap-4 align-items-center">
 
                             <form action="/posts/like/{{post._id}}" method="POST" class="d-inline">
+                                <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                 <button type="submit" class="btn p-0 border-0 bg-transparent">
                                     <i
                                         class="{{#if isLiked}}fas text-danger{{else}}far text-dark{{/if}} fa-lg fa-heart"></i>
@@ -69,7 +71,7 @@
                                 </button>
                             </form>
 
-                            <a href="/posts/{{post._id}}/comments"
+                            <a href="/posts/{{post.slug}}/comments"
                                 class="text-decoration-none text-dark d-flex align-items-center" title="View Comments">
                                 <i class="far fa-lg fa-comment"></i>
                                 <span class="ms-1 fw-bold">{{post.comments.length}}</span>
@@ -84,6 +86,7 @@
                         {{#if isSaved}}
                         <!-- UNSAVE FORM -->
                         <form action="/collections/save" method="POST" class="d-inline">
+                            <input type="hidden" name="_csrf" value="{{csrfToken}}">
                             <input type="hidden" name="postId" value="{{post._id}}">
                             <button type="submit" class="btn p-0 border-0 bg-transparent text-dark ms-3"
                                 title="Remove from Saved">

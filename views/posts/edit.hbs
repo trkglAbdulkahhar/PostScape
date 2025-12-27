@@ -6,6 +6,7 @@
                     <h2 class="fw-bold mb-4">Edit Post</h2>
 
                     <form action="/posts/edit/{{post._id}}" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Title</label>
@@ -40,7 +41,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary px-4 fw-bold">Save Changes</button>
-                            <a href="/posts/{{post._id}}" class="btn btn-light px-4">Cancel</a>
+                            <a href="/posts/{{post.slug}}" class="btn btn-light px-4">Cancel</a>
                         </div>
                     </form>
                 </div>

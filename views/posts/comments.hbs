@@ -72,10 +72,13 @@
                         {{/if}}
                     </div>
 
-                    <div class="border-top pt-3">
+                    {{!-- Comment Form --}}
+                    <div class="mt-4">
                         <form action="/posts/comment/{{post._id}}" method="POST"
-                            class="d-flex gap-2 align-items-center">
+                            class="d-flex gap-3 align-items-start bg-light p-3 rounded-4">
+                            <input type="hidden" name="_csrf" value="{{csrfToken}}">
                             <input type="hidden" name="redirect" value="comments">
+                            <img src="{{currentUser.image}}" class="rounded-circle border border-2 border-white">
 
                             <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                                 style="width: 35px; height: 35px;">

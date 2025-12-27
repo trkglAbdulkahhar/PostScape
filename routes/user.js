@@ -4,37 +4,7 @@ const router = express.Router();
 const User = require('../models/User'); // Ensure User model is required
 const Post = require('../models/Post'); // Ensure Post model is required
 
-// GET - Formu göster (Setup Profile)
-router.get('/setup-profile', (req, res) => {
-    if (!req.session.user) return res.redirect('/auth/login');
-    res.render('setup-profile', { layout: 'main', user: req.session.user });
-});
 
-// POST - Verileri kaydet ve profili tamamla (Setup Profile)
-router.post('/setup-profile', async (req, res) => {
-    try {
-        const { firstName, lastName, nickname, jobTitle, age, linkedinUrl, githubUrl, bio } = req.body;
-
-        // Update user in DB
-        await User.findByIdAndUpdate(req.session.user._id, {
-            firstName, lastName, nickname, jobTitle, age, linkedinUrl, githubUrl, bio,
-            isProfileComplete: true
-        });
-
-        // Update session user to reflect changes immediately
-        req.session.user.firstName = firstName;
-        req.session.user.lastName = lastName;
-        req.session.user.nickname = nickname;
-        req.session.user.jobTitle = jobTitle;
-        req.session.user.age = age;
-        req.session.user.isProfileComplete = true;
-
-        res.redirect('/dashboard');
-    } catch (err) {
-        console.error("Setup Profile Error:", err);
-        res.redirect('/setup-profile');
-    }
-});
 
 // GET - User Search API for Autocomplete
 router.get('/search-users', async (req, res) => {
@@ -42,54 +12,143 @@ router.get('/search-users', async (req, res) => {
     if (!query || query.length < 1) return res.json([]);
 
     try {
-        // Search by firstName or nickname (case-insensitive)
+        // DATA-DRIVEN FILTERING: Fetch fresh following list
+        const currentUser = await User.findById(req.session.user._id).select('following');
+        const followingIds = currentUser.following || [];
+
+        // Fail-Safe: If not following anyone, return empty
+        if (followingIds.length === 0) return res.json([]);
+
+        // CONSTRAINT: Only search within following list
         const users = await User.find({
+            _id: { $in: followingIds },
             $or: [
                 { firstName: { $regex: query, $options: 'i' } },
-                { nickname: { $regex: query, $options: 'i' } }
+                { lastName: { $regex: query, $options: 'i' } },
+                { nickname: { $regex: query, $options: 'i' } },
+                { name: { $regex: query, $options: 'i' } }
             ]
-        }).limit(5).select('firstName lastName nickname');
+        }).limit(10).select('firstName lastName nickname name image');
 
         res.json(users);
     } catch (err) {
-        console.error(err);
+        console.error("Search Error:", err);
         res.status(500).json([]);
     }
 });
 
-// User Dashboard
-router.get('/dashboard', async (req, res) => {
+// User Dashboard - MOVED TO index.js
+// router.get('/dashboard', ...);
+
+// Toggle Follow / Unfollow User (Instant - No Request)
+router.post('/follow/:id', async (req, res) => {
     try {
-        if (!req.session.user) return res.redirect('/auth/login');
+        const targetId = req.params.id;
+        const selfId = req.session.user._id;
 
-        const currentUserId = req.session.user._id;
+        if (targetId === selfId.toString()) return res.json({ success: false, msg: "Kendini takip edemezsin." });
 
-        // 1. Fetch User with Profile Data & Saved Posts
-        // Using .lean() is MANDATORY for Handlebars display
-        const userProfile = await User.findById(currentUserId)
-            .populate('savedPosts')
-            .populate('collections')
+        const targetUser = await User.findById(targetId);
+        if (!targetUser) return res.status(404).json({ success: false });
+
+        // Check if already following (Toggle Logic)
+        const isFollowing = targetUser.followers.includes(selfId);
+
+        if (isFollowing) {
+            // UNFOLLOW
+            await User.findByIdAndUpdate(targetId, { $pull: { followers: selfId } });
+            await User.findByIdAndUpdate(selfId, { $pull: { following: targetId } });
+            return res.json({ success: true, status: 'unfollowed' });
+        } else {
+            // FOLLOW (Instant)
+            // 1. Karşılıklı güncelleme (Takip eden ve Edilen)
+            await User.findByIdAndUpdate(selfId, { $addToSet: { following: targetId } });
+            await User.findByIdAndUpdate(targetId, { $addToSet: { followers: selfId } });
+
+            // 2. Bildirim Gönder (Notification System)
+            const Notification = require('../models/Notification');
+            await Notification.create({
+                recipient: targetId,
+                sender: selfId,
+                type: 'follow',
+                content: 'seni takip etmeye başladı.'
+            });
+
+            return res.json({ success: true, status: 'following' });
+        }
+
+    } catch (err) {
+        console.error("Follow Error:", err);
+        res.status(500).json({ success: false });
+    }
+});
+
+// Remove old accept/reject routes as they are no longer needed, 
+// OR keep them as zombies if legacy clients exist, but for this task I will comment them out or remove them to avoid confusion.
+// User didn't explicitly say remove them but implied logic change. 
+// I'll leave them for safety but they won't be used.
+
+// TAKİPÇİLER SAYFASI
+router.get('/followers/:id', async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const targetUser = await User.findById(req.params.id)
+            .populate('followers', 'name nickname role')
             .lean();
 
-        // 2. Fetch Posts Liked by this User
-        // Assuming Post model has: likes: [ObjectId]
-        const likedPosts = await Post.find({ likes: currentUserId })
-            .populate('user') // to show author name
-            .lean();
+        if (!targetUser) return res.redirect('/dashboard');
 
-        // 3. Render
-        res.render('dashboard', {
-            user: userProfile,
-            savedPosts: userProfile.savedPosts,
-            items: userProfile.collections, // Renaming to avoid conflict if any, but 'collections' is standard
-            collections: userProfile.collections,
-            likedPosts: likedPosts,
-            isDashboard: true,
-            onlineCount: res.locals.onlineCount
+        res.render('user/social-list', {
+            title: 'Followers',
+            list: targetUser.followers,
+            targetName: targetUser.firstName + ' ' + targetUser.lastName,
+            currentUser: req.session.user,
+            isFollowersPage: true // FLAG for UI
         });
     } catch (err) {
-        console.error("Dashboard Error:", err);
-        res.redirect('/');
+        console.error(err);
+        res.redirect('/dashboard');
+    }
+});
+
+// TAKİP EDİLENLER SAYFASI
+router.get('/following/:id', async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const targetUser = await User.findById(req.params.id)
+            .populate('following', 'name nickname role')
+            .lean();
+
+        if (!targetUser) return res.redirect('/dashboard');
+
+        res.render('user/social-list', {
+            title: 'Following',
+            list: targetUser.following,
+            targetName: targetUser.firstName + ' ' + targetUser.lastName,
+            currentUser: req.session.user,
+            isFollowersPage: false // FLAG for UI
+        });
+    } catch (err) {
+        console.error(err);
+        res.redirect('/dashboard');
+    }
+});
+
+// POST /user/remove-follower/:id
+router.post('/remove-follower/:id', async (req, res) => {
+    try {
+        const followerId = req.params.id; // Beni takip eden kişi
+        const myId = req.session.user._id; // Ben
+
+        // 1. O kişinin 'following' listesinden beni çıkart
+        await User.findByIdAndUpdate(followerId, { $pull: { following: myId } });
+        // 2. Benim 'followers' listemden o kişiyi çıkart
+        await User.findByIdAndUpdate(myId, { $pull: { followers: followerId } });
+
+        res.json({ success: true, status: 'removed' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false });
     }
 });
 

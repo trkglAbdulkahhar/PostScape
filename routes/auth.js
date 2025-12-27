@@ -5,12 +5,14 @@ const bcrypt = require('bcryptjs');
 
 // Login Page
 router.get('/login', (req, res) => {
-    res.render('login', { layout: 'main' });
+    if (req.session.user) return res.redirect('/dashboard');
+    res.render('login');
 });
 
 // Register Page
 router.get('/register', (req, res) => {
-    res.render('register', { layout: 'main' });
+    if (req.session.user) return res.redirect('/dashboard');
+    res.render('register');
 });
 
 // Register Logic

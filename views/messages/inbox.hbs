@@ -85,16 +85,15 @@
             </div>
             <div class="overflow-auto" style="flex: 1;">
                 {{#each conversations}}
-                <a href="/messages?id={{_id}}"
+                <a href="/messages/{{otherUser.slug}}"
                     class="list-group-item list-group-item-action border-0 p-3 d-flex align-items-center {{#if (eq ../activeChatId _id)}}active bg-light{{/if}}">
                     <div class="bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center"
                         style="width: 40px; height: 40px; min-width: 40px;">
-                        {{#each members}}{{#unless (eq this._id ../../user._id)}}{{initials name}}{{/unless}}{{/each}}
+                        {{initials otherUser.name}}
                     </div>
                     <div class="text-truncate">
-                        <h6 class="mb-0 fw-bold text-dark">{{#each members}}{{#unless (eq this._id
-                            ../../user._id)}}{{name}}{{/unless}}{{/each}}</h6>
-                        <small class="text-muted">Click to open chat</small>
+                        <h6 class="mb-0 fw-bold text-dark">{{otherUser.name}}</h6>
+                        <small class="text-muted">{{truncate lastMessage 30}}</small>
                     </div>
                 </a>
                 {{/each}}
@@ -119,11 +118,31 @@
                 {{#each messages}}
                 <div
                     class="d-flex mb-3 {{#if (eq sender._id ../user._id)}}justify-content-end sent-message{{else}}justify-content-start{{/if}}">
-                    <div class="message-bubble p-2 px-3 rounded-3 shadow-sm {{#if (eq sender._id ../user._id)}}bg-primary text-white{{else}}bg-white border text-dark{{/if}}"
-                        style="max-width: 75%;">
+                    <div class="message-bubble shadow-sm p-1 rounded-3 {{#if (eq sender._id ../user._id)}}bg-primary text-white{{else}}bg-white border text-dark{{/if}}"
+                        style="max-width: 75%; position: relative;">
 
-                        <div id="msg-text-{{_id}}" {{#unless (eq sender._id ../user._id)}}class="mb-0" {{/unless}}>
-                            {{text}}</div>
+                        {{#if sharedPost}}
+                        <div class="shared-post-image mb-2" onclick="window.location.href='/posts/{{sharedPost._id}}'"
+                            style="cursor: pointer; border-radius: 8px; overflow: hidden; max-width: 300px;">
+                            {{#if sharedPost.image}}
+                            <img src="{{sharedPost.image}}"
+                                style="width: 100%; height: auto; max-height: 150px; object-fit: cover; display: block;"
+                                alt="Shared Post">
+                            {{/if}}
+                        </div>
+                        {{/if}}
+
+                        <div class="user-custom-note px-2 pb-1 text-end">
+                            <p id="msg-text-{{_id}}" class="m-0"
+                                style="word-wrap: break-word; font-size: 14px; line-height: 1.3;">
+                                {{text}}
+                            </p>
+                            <!-- TIMESTAMP IMPLEMENTATION -->
+                            <div class="text-end" style="line-height: 1;">
+                                <small class="text-muted opacity-75" style="font-size: 0.7rem;">{{formatTime
+                                    createdAt}}</small>
+                            </div>
+                        </div>
 
                         {{#if (eq sender._id ../user._id)}}
                         <div class="message-actions-vertical d-flex align-items-center gap-2">
@@ -140,15 +159,18 @@
                                 })();
                             </script>
                             <form action="/messages/delete-message/{{_id}}" method="POST" class="m-0">
-                                <button type="submit" class="btn btn-link text-white opacity-75 p-1 shadow-none"
-                                    title="Delete">
+                                <input type="hidden" name="_csrf" value="{{../csrfToken}}">
+                                <button type="submit"
+                                    class="btn btn-link py-1 px-2 text-decoration-none text-white opacity-75 action-btn"
+                                    title="Sil">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </form>
                         </div>
 
                         <form id="edit-form-{{_id}}" action="/messages/edit-message/{{_id}}" method="POST"
-                            class="d-none mt-2">
+                            class="d-none mt-2 px-2">
+                            <input type="hidden" name="_csrf" value="{{../csrfToken}}">
                             <input type="text" name="text" value="{{text}}"
                                 class="form-control form-control-sm border-0 bg-white text-dark shadow-none mb-1">
                             <div class="d-flex gap-2">
@@ -163,9 +185,10 @@
                 {{/each}}
             </div>
 
-            <div class="input-area">
+            <div class="card-footer bg-white border-top-0 py-3">
                 <form action="/messages/{{activeChatId}}" method="POST" class="d-flex gap-2">
-                    <input type="text" name="text" class="form-control rounded-pill shadow-none"
+                    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                    <input type="text" name="text" class="form-control rounded-pill border-0 bg-light py-2"
                         placeholder="Type a message..." required autocomplete="off">
                     <button type="submit" class="btn btn-primary rounded-circle" style="width: 45px; height: 45px;">
                         <i class="fas fa-paper-plane"></i>
