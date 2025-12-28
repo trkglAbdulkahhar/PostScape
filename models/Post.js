@@ -31,9 +31,18 @@ const PostSchema = new mongoose.Schema({
 
 const slugify = require('slugify');
 
-PostSchema.pre('validate', function (next) {
+PostSchema.pre('validate', async function (next) {
     if (this.title) {
-        this.slug = slugify(this.title, { lower: true, strict: true, locale: 'tr' });
+        const baseSlug = slugify(this.title, { lower: true, strict: true, locale: 'tr' });
+        let slugCandidate = baseSlug;
+        let counter = 1;
+
+        // Loop until unique slug is found
+        while (await this.constructor.exists({ slug: slugCandidate, _id: { $ne: this._id } })) {
+            slugCandidate = `${baseSlug}-${counter}`;
+            counter++;
+        }
+        this.slug = slugCandidate;
     }
     next();
 });

@@ -11,6 +11,12 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 
+// Middleware Imports
+const { csrfMiddleware, csrfTokenInjector, csrfErrorHandler } = require('./middleware/csrf');
+const isAuthenticated = require('./middleware/isAuth');
+const globalLocals = require('./middleware/globalLocals');
+const { notFound, globalError } = require('./middleware/errorHandlers');
+
 // 2. Database Connection
 const connectDB = require('./config/db');
 connectDB();
@@ -118,37 +124,10 @@ app.use(session({
     }
 }));
 
-// CSRF Protection
-const csurf = require('csurf');
-const csrfOptions = { cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production' } };
-const csrfProtection = csurf(csrfOptions);
-const csrfPermissive = csurf({ ...csrfOptions, ignoreMethods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE'] });
-
-// Dual CSRF Middleware
-app.use((req, res, next) => {
-    const contentType = req.get('Content-Type');
-    if (contentType && contentType.startsWith('multipart/form-data')) {
-        // Multipart: Skip validation here (handled in route), but attach csrfToken function
-        csrfPermissive(req, res, next);
-    } else {
-        // Standard: Validate everything except GET/HEAD/OPTIONS
-        csrfProtection(req, res, next);
-    }
-});
-
-// Global CSRF Token Middleware
-app.use((req, res, next) => {
-    // Now this will always work because one of the above middlewares definitely ran
-    res.locals.csrfToken = req.csrfToken();
-    next();
-});
-
-// CSRF Error Handler
-app.use((err, req, res, next) => {
-    if (err.code !== 'EBADCSRFTOKEN') return next(err);
-    res.status(403);
-    res.send('Güvenlik Hatası: Form oturumunuz sona erdi. Lütfen sayfayı yenileyip tekrar deneyin. (CSRF Error)');
-});
+// CSRF Protection & Token Injection
+app.use(csrfMiddleware);
+app.use(csrfTokenInjector);
+app.use(csrfErrorHandler);
 
 // 5. View Engine
 app.engine('.hbs', engine({
@@ -226,120 +205,10 @@ app.set('views', './views');
 // 6. Global Variables & Auth Logic
 
 // Auth Guard Middleware
-function isAuthenticated(req, res, next) {
-    if (!req.session || !req.session.user) {
-        return res.redirect('/auth/login');
-    }
-    res.locals.currentUser = req.session.user;
-    next();
-}
+// 6. Global Variables & Auth Logic
 
-// --- GLOBAL DATA MIDDLEWARE (The Fix) ---
-app.use(async (req, res, next) => {
-    // Default locals
-    res.locals.user = null;
-    res.locals.currentUser = null; // Legacy Support
-    res.locals.isAdmin = false;
-    res.locals.isMaster = false;
-    res.locals.collections = [];
-    res.locals.onlineCount = 1;
-    res.locals.savedPostIds = []; // Critical for the Icons
-
-    if (req.session && req.session.user) {
-        try {
-            // 1. FRESH USER FETCH: Always get the latest data from DB
-            const User = mongoose.model('User');
-            const user = await User.findById(req.session.user._id).lean();
-
-            if (user) {
-                // Update session if needed (optional) but rely on local variable
-                res.locals.user = user;
-                res.locals.currentUser = user; // Backup
-
-                // SYNC SESSION ROLE (Crucial for Auth Middleware)
-                if (req.session.user.role !== user.role) {
-                    req.session.user.role = user.role;
-                    req.session.save(); // Ensure persistence
-                }
-
-                // Role Helpers
-                res.locals.isAdmin = user.role === 'admin' || user.role === 'owner';
-                res.locals.isMaster = user.role === 'owner';
-
-                // Update Last Active
-                await User.findByIdAndUpdate(user._id, { lastActive: new Date() });
-
-                // 2. FETCH COLLECTIONS for Dropdowns/Modals
-                const Collection = mongoose.model('Collection');
-                const myCollections = await Collection.find({ user: user._id }).sort({ updatedAt: -1 }).lean();
-                res.locals.collections = myCollections || [];
-
-                // 3. CALCULATE SAVED POST IDS (For Icons)
-                // Flatten the arrays so we know what is saved globally
-                if (myCollections && myCollections.length > 0) {
-                    res.locals.savedPostIds = myCollections.flatMap(c => c.posts.map(p => p.toString()));
-                }
-
-                // 4. FETCH RECENT CONTACTS (For Share Modal)
-                // Find conversations where user is a member
-                const Conversation = mongoose.model('Conversation');
-                let recentConvos = await Conversation.find({ members: user._id })
-                    .populate('members', 'name')
-                    .sort({ updatedAt: -1 })
-                    .lean();
-
-                // Extract the "Other User" from each conversation
-                const recentContacts = recentConvos.map(c => {
-                    const other = c.members.find(m => m._id.toString() !== user._id.toString());
-                    return {
-                        _id: other ? other._id : null,
-                        name: other ? other.name : 'Unknown User',
-                        conversationId: c._id // Optional, but useful
-                    };
-                }).filter(c => c._id); // Filter out nulls
-
-                res.locals.recentContacts = recentContacts;
-
-                // 5. FETCH NOTIFICATIONS
-                const Notification = require('./models/Notification'); // Ensure loaded
-                const myNotifications = await Notification.find({ recipient: user._id })
-                    .sort({ createdAt: -1 })
-                    .limit(10)
-                    .populate('sender', 'name image')
-                    .lean();
-
-                const unreadNotifs = await Notification.countDocuments({ recipient: user._id, read: false });
-
-                res.locals.notifications = myNotifications;
-                res.locals.unreadCount = unreadNotifs;
-
-                // Mark notifications as read functionality will be part of the dropdown open action in frontend or a separate API.
-                // For simplified UX as per prompt: just showing them.
-
-            } else {
-                // User in session but not in DB? Force logout.
-                req.session.destroy();
-            }
-        } catch (err) {
-            console.error("Global Middleware Error:", err);
-        }
-    }
-
-    // 4. ONLINE COUNT (Global)
-    try {
-        const User = mongoose.model('User');
-        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const count = await User.countDocuments({ lastActive: { $gte: fiveMinAgo } });
-        res.locals.onlineCount = count;
-
-        // NEW: Total Visitor Count (For Footer & Admin)
-        const totalUsers = await User.countDocuments({});
-        res.locals.totalUsers = totalUsers;
-
-    } catch (e) { console.error(e); }
-
-    next();
-});
+// --- GLOBAL DATA MIDDLEWARE ---
+app.use(globalLocals);
 
 // Socket.io Logic
 let onlineUsers = new Set();
@@ -402,26 +271,8 @@ app.use('/', require('./routes/index'));
 app.use('/', require('./routes/adminConversations'));
 
 // 8. Error Handling
-app.use((req, res, next) => {
-    res.status(404).render('error', {
-        title: 'Not Found',
-        statusCode: 404,
-        statusMessage: 'Not Found',
-        description: 'The page you are looking for does not exist.'
-    });
-});
-
-app.use((err, req, res, next) => {
-    console.error("GLOBAL ERROR:", err);
-    const statusCode = err.status || 500;
-    res.status(statusCode).render('error', {
-        title: 'Error',
-        statusCode,
-        statusMessage: statusCode === 404 ? 'Not Found' : 'Server Error',
-        description: 'An unexpected error occurred.'
-    });
-});
-
+app.use(notFound);
+app.use(globalError);
 // 9. Server Start
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
