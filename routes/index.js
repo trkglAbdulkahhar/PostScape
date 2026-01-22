@@ -5,6 +5,9 @@ const indexController = require('../controllers/indexController');
 // GET / -> Redirect to Feed (All Posts)
 router.get('/', indexController.getLanding);
 
+// GET /sitemap.xml -> Dynamic Sitemap
+router.get('/sitemap.xml', indexController.getSitemap);
+
 // GET /feed -> "ALL POSTS" PAGE (The Global Stream)
 router.get('/feed', indexController.getFeed);
 

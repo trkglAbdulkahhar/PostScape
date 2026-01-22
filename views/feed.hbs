@@ -73,7 +73,7 @@
                                 <span class="badge rounded-pill bg-light text-primary border">@{{this}}</span>
                                 {{/each}}
                             </div>
-                            <p class="text-muted small mb-0 line-clamp-3">{{body}}</p>
+                            <p class="text-muted small mb-0 line-clamp-3">{{stripTags body}}</p>
                         </div>
                         <div class="card-footer bg-white border-0 pb-3 d-flex align-items-center">
                             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2 shadow-sm"
@@ -191,7 +191,7 @@
 
                                     <h5 class="fw-bold mb-2 card-title pe-4">${p.title}</h5>
                                     <!-- Remove generic 'By' text -->
-                                    <p class="text-muted small mb-0 line-clamp-3">${p.body}</p>
+                                    <p class="text-muted small mb-0 line-clamp-3">${p.body.replace(/<[^>]*>?/gm, '')}</p>
                                 </div>
                             </div>
                         </div>

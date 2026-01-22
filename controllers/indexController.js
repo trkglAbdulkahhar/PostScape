@@ -304,3 +304,54 @@ exports.postSetupProfile = async (req, res) => {
         res.redirect('/setup-profile');
     }
 };
+
+// GET /sitemap.xml -> Dynamic Sitemap
+exports.getSitemap = async (req, res) => {
+    try {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const posts = await Post.find().select('slug updatedAt createdAt').sort({ updatedAt: -1 }).lean();
+
+        let xml = '<?xml version="1.0" encoding="UTF-8"?>';
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+
+        // 1. Static Pages (High Priority)
+        const staticPages = [
+            { url: '/', priority: '1.0', changefreq: 'daily' },
+            { url: '/feed', priority: '1.0', changefreq: 'always' },
+            { url: '/search', priority: '0.8', changefreq: 'monthly' },
+            { url: '/auth/login', priority: '0.5', changefreq: 'yearly' },
+            { url: '/auth/register', priority: '0.5', changefreq: 'yearly' }
+        ];
+
+        staticPages.forEach(page => {
+            xml += `
+    <url>
+        <loc>${baseUrl}${page.url}</loc>
+        <changefreq>${page.changefreq}</changefreq>
+        <priority>${page.priority}</priority>
+    </url>`;
+        });
+
+        // 2. Dynamic Posts (Standard Priority)
+        posts.forEach(post => {
+            const lastMod = post.updatedAt ? new Date(post.updatedAt).toISOString() : new Date(post.createdAt).toISOString();
+            xml += `
+    <url>
+        <loc>${baseUrl}/posts/${post.slug}</loc>
+        <lastmod>${lastMod}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+    </url>`;
+        });
+
+        xml += '</urlset>';
+
+        // Set Headers
+        res.header('Content-Type', 'application/xml');
+        res.send(xml);
+
+    } catch (err) {
+        console.error("Sitemap Error:", err);
+        res.status(500).end();
+    }
+};

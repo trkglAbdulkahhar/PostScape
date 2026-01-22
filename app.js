@@ -196,6 +196,10 @@ app.engine('.hbs', engine({
             if (!text) return '';
             const slugify = require('slugify'); // Require inside helper to ensure it's available
             return slugify(text, { lower: true, strict: true, locale: 'tr' });
+        },
+        stripTags: function (input) {
+            if (!input) return '';
+            return input.replace(/<(?:.|\n)*?>/gm, '');
         }
     }
 }));
